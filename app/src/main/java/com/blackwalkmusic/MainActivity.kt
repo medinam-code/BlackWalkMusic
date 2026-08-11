@@ -1,39 +1,22 @@
 package com.blackwalkmusic
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.QueueMusic
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,19 +24,71 @@ import androidx.compose.ui.unit.sp
 
 class MainActivity : ComponentActivity() {
 
+    private val permissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+
+            val granted = permissions.values.any { it }
+
+            if (granted) {
+                loadMusic()
+            }
+        }
+
+    private var songs by mutableStateOf<List<Song>>(emptyList())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        requestMusicPermission()
+
         setContent {
-            BlackWalkMusicApp()
+            BlackWalkMusicScreen(songs)
         }
+    }
+
+    private fun requestMusicPermission() {
+
+        val permissions = if (Build.VERSION.SDK_INT >= 33) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_AUDIO,
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            )
+        }
+
+        val needsPermission = permissions.any {
+            checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (needsPermission) {
+            permissionLauncher.launch(permissions)
+        } else {
+            loadMusic()
+        }
+    }
+
+    private fun loadMusic() {
+        songs = MusicRepository.getSongs(contentResolver)
     }
 }
 
 @Composable
-fun BlackWalkMusicApp() {
+fun BlackWalkMusicScreen(
+    songs: List<Song>
+) {
 
-    MaterialTheme {
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            background = Color.Black,
+            surface = Color(0xFF101010),
+            primary = Color.White
+        )
+    ) {
 
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -63,178 +98,128 @@ fun BlackWalkMusicApp() {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                    .padding(18.dp)
             ) {
 
-                // Encabezado
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-
-                    Column {
-
-                        Text(
-                            text = "BLACKWALK",
-                            color = Color.White,
-                            fontSize = 23.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            text = "MUSIC",
-                            color = Color.Gray,
-                            fontSize = 12.sp,
-                            letterSpacing = 4.sp
-                        )
-                    }
-
-                    IconButton(onClick = {}) {
-                        Icon(
-                            imageVector = Icons.Default.QueueMusic,
-                            contentDescription = "Cola",
-                            tint = Color.White
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Portada
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color(0xFF151515)),
-                    contentAlignment = Alignment.Center
-                ) {
-
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = null,
-                        tint = Color(0xFF555555),
-                        modifier = Modifier.size(100.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(22.dp))
-
-                // Información de la canción
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-
-                        Text(
-                            text = "Ninguna canción",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            text = "Selecciona una canción para comenzar",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                    }
-
-                    IconButton(onClick = {}) {
-                        Icon(
-                            imageVector = Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorito",
-                            tint = Color.White
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // Barra de progreso
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF333333))
+                Text(
+                    text = "BLACKWALK",
+                    color = Color.White,
+                    fontSize = 25.sp,
+                    fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(22.dp))
+                Text(
+                    text = "MUSIC",
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
 
-                // Controles
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Spacer(modifier = Modifier.height(25.dp))
 
-                    IconButton(onClick = {}) {
-                        Icon(
-                            imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = "Anterior",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
+                Text(
+                    text = "Canciones",
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
 
-                    Surface(
-                        modifier = Modifier.size(68.dp),
-                        shape = CircleShape,
-                        color = Color.White
+                Spacer(modifier = Modifier.height(10.dp))
+
+                if (songs.isEmpty()) {
+
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
 
-                        IconButton(onClick = {}) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+
                             Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "Reproducir",
-                                tint = Color.Black,
-                                modifier = Modifier.size(38.dp)
+                                imageVector = Icons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(70.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "No encontramos canciones",
+                                color = Color.White
+                            )
+
+                            Text(
+                                text = "Agrega música al teléfono y vuelve a abrir la aplicación",
+                                color = Color.Gray,
+                                fontSize = 13.sp
                             )
                         }
                     }
 
-                    IconButton(onClick = {}) {
-                        Icon(
-                            imageVector = Icons.Default.SkipNext,
-                            contentDescription = "Siguiente",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
+                } else {
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
 
-                // Navegación inferior
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                        items(
+                            items = songs,
+                            key = { it.id }
+                        ) { song ->
 
-                    IconButton(onClick = {}) {
-                        Icon(
-                            imageVector = Icons.Default.LibraryMusic,
-                            contentDescription = "Biblioteca",
-                            tint = Color.White
-                        )
-                    }
-
-                    IconButton(onClick = {}) {
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
-                            contentDescription = "Ahora suena",
-                            tint = Color.White
-                        )
+                            SongItem(song)
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun SongItem(song: Song) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        Box(
+            modifier = Modifier
+                .size(55.dp)
+                .background(Color(0xFF202020)),
+            contentAlignment = Alignment.Center
+        ) {
+
+            Icon(
+                imageVector = Icons.Default.MusicNote,
+                contentDescription = null,
+                tint = Color.Gray
+            )
+        }
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+
+            Text(
+                text = song.title,
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
+
+            Text(
+                text = song.artist,
+                color = Color.Gray,
+                fontSize = 13.sp
+            )
         }
     }
 }
