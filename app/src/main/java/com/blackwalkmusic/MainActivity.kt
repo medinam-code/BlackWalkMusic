@@ -144,7 +144,6 @@ class MainActivity : ComponentActivity() {
                 mediaItem: MediaItem?,
                 reason: Int
             ) {
-
                 updateCurrentSong()
                 updateProgress()
             }
@@ -152,30 +151,25 @@ class MainActivity : ComponentActivity() {
             override fun onPlaybackStateChanged(
                 playbackState: Int
             ) {
-
                 updateProgress()
             }
 
             override fun onRepeatModeChanged(
                 mode: Int
             ) {
-
                 repeatMode = mode
             }
 
             override fun onShuffleModeEnabledChanged(
                 shuffleModeEnabled: Boolean
             ) {
-
-                shuffleEnabled =
-                    shuffleModeEnabled
+                shuffleEnabled = shuffleModeEnabled
             }
 
             override fun onTimelineChanged(
                 timeline: androidx.media3.common.Timeline,
                 reason: Int
             ) {
-
                 updateCurrentSong()
             }
         }
@@ -324,7 +318,6 @@ class MainActivity : ComponentActivity() {
                         if (
                             currentSong != null
                         ) {
-
                             showFullPlayer = true
                         }
                     },
@@ -615,8 +608,7 @@ class MainActivity : ComponentActivity() {
             mediaController.hasPreviousMediaItem()
         ) {
 
-            mediaController
-                .seekToPreviousMediaItem()
+            mediaController.seekToPreviousMediaItem()
 
             mediaController.play()
         }
@@ -721,33 +713,28 @@ class MainActivity : ComponentActivity() {
         song: Song
     ) {
 
-        val newState =
-            FavoritesManager.toggleFavorite(
-                this,
-                song.id
-            )
+        FavoritesManager.toggleFavorite(
+            this,
+            song.id
+        )
 
         favoriteIds =
-            FavoritesManager.getFavorites(this)
+            FavoritesManager.getFavorites(
+                this
+            )
 
-        /*
-         * Forzamos actualización visual.
-         */
-        if (newState) {
-
-            currentSong =
-                currentSong
-                    ?.copy()
-
-        }
+        currentSong =
+            currentSong?.copy()
     }
 
     /*
      * ========================================================
-     * CURRENT PLAYBACK QUEUE
+     * COLA DE REPRODUCCIÓN
      *
-     * Devuelve la cola siguiendo el orden real
-     * de reproducción, incluyendo shuffle.
+     * ESTA ES LA PARTE IMPORTANTE.
+     *
+     * La cola ahora se obtiene desde el Timeline real
+     * de Media3 y respeta el modo aleatorio.
      * ========================================================
      */
 
@@ -756,14 +743,25 @@ class MainActivity : ComponentActivity() {
         val mediaController =
             controller ?: return emptyList()
 
-        if (
-            mediaController.mediaItemCount <= 0
-        ) {
+        val count =
+            mediaController.mediaItemCount
+
+        if (count <= 0) {
+            return emptyList()
+        }
+
+        val timeline =
+            mediaController.currentTimeline
+
+        if (timeline.isEmpty) {
             return emptyList()
         }
 
         val result =
             mutableListOf<Song>()
+
+        val visited =
+            mutableSetOf<Int>()
 
         var index =
             mediaController.currentMediaItemIndex
@@ -772,13 +770,13 @@ class MainActivity : ComponentActivity() {
             return emptyList()
         }
 
-        val visited =
-            mutableSetOf<Int>()
+        /*
+         * Primero agregamos la canción actual.
+         */
 
         while (
             index >= 0 &&
-            index <
-                mediaController.mediaItemCount &&
+            index < count &&
             !visited.contains(index)
         ) {
 
@@ -795,35 +793,40 @@ class MainActivity : ComponentActivity() {
                     ?.uri
                     ?.toString()
 
-            songs.find {
-                it.uri == uri
-            }?.let {
-                result.add(it)
+            val song =
+                songs.find {
+                    it.uri == uri
+                }
+
+            if (song != null) {
+                result.add(song)
             }
 
-            val next =
-                mediaController
-                    .getNextMediaItemIndex()
-
             /*
-             * Media3 devuelve el siguiente índice
-             * según el modo shuffle actual.
+             * Obtenemos el siguiente elemento
+             * respetando shuffle y repeat.
              */
 
-            if (
-                next < 0 ||
-                visited.contains(next)
-            ) {
+            val nextIndex =
+                timeline.getNextWindowIndex(
+                    index,
+                    mediaController.repeatMode,
+                    mediaController.shuffleModeEnabled
+                )
 
+            if (
+                nextIndex < 0 ||
+                visited.contains(nextIndex)
+            ) {
                 break
             }
 
-            index = next
+            index = nextIndex
         }
 
         /*
-         * Si por alguna razón la cola actual no pudo
-         * reconstruirse, mostramos al menos la canción actual.
+         * Si por algún motivo Media3 no devolvió
+         * la cola, mostramos al menos la canción actual.
          */
 
         if (
@@ -877,7 +880,9 @@ class MainActivity : ComponentActivity() {
             )
 
         favoriteIds =
-            FavoritesManager.getFavorites(this)
+            FavoritesManager.getFavorites(
+                this
+            )
 
         updateCurrentSong()
     }
@@ -906,12 +911,6 @@ class MainActivity : ComponentActivity() {
 /*
  * ============================================================
  * MARCA TERERÉ MUSIC PY
- *
- * Escalonada:
- *
- * TERERÉ
- *    MUSIC
- *       PY
  * ============================================================
  */
 
@@ -926,27 +925,18 @@ fun TerereBrand(
 
         Text(
             text = "TERERÉ",
-
             color = ParaguayRed,
-
             fontSize = 28.sp,
-
             fontWeight = FontWeight.Black,
-
             letterSpacing = 1.sp
         )
 
         Text(
             text = "MUSIC",
-
             color = ParaguayWhite,
-
             fontSize = 28.sp,
-
             fontWeight = FontWeight.Black,
-
             letterSpacing = 1.sp,
-
             modifier =
                 Modifier.padding(
                     start = 18.dp
@@ -955,15 +945,10 @@ fun TerereBrand(
 
         Text(
             text = "PY",
-
             color = ParaguayBlue,
-
             fontSize = 28.sp,
-
             fontWeight = FontWeight.Black,
-
             letterSpacing = 1.sp,
-
             modifier =
                 Modifier.padding(
                     start = 48.dp
@@ -1163,10 +1148,6 @@ fun BlackWalkMusicScreen(
                         )
             ) {
 
-                /*
-                 * CABECERA
-                 */
-
                 Row(
                     modifier =
                         Modifier.fillMaxWidth(),
@@ -1202,10 +1183,6 @@ fun BlackWalkMusicScreen(
                     modifier =
                         Modifier.height(16.dp)
                 )
-
-                /*
-                 * BUSCADOR
-                 */
 
                 OutlinedTextField(
                     value =
@@ -1298,10 +1275,6 @@ fun BlackWalkMusicScreen(
                     modifier =
                         Modifier.height(14.dp)
                 )
-
-                /*
-                 * BIBLIOTECA
-                 */
 
                 Row(
                     modifier =
@@ -1538,10 +1511,6 @@ fun BlackWalkMusicScreen(
                         Modifier.height(6.dp)
                 )
 
-                /*
-                 * LISTA
-                 */
-
                 if (
                     filteredSongs.isEmpty()
                 ) {
@@ -1633,10 +1602,6 @@ fun BlackWalkMusicScreen(
                         }
                     }
                 }
-
-                /*
-                 * MINI PLAYER
-                 */
 
                 if (
                     currentSong != null
@@ -2146,7 +2111,7 @@ fun MiniPlayer(
 
 /*
  * ============================================================
- * REPRODUCTOR COMPLETO DESLIZABLE
+ * REPRODUCTOR COMPLETO
  * ============================================================
  */
 
@@ -2184,16 +2149,6 @@ fun FullPlayerScreen(
             safeDuration
         )
 
-    /*
-     * Gestos verticales.
-     *
-     * Deslizar hacia arriba:
-     * abre reproducción actual.
-     *
-     * Deslizar hacia abajo:
-     * vuelve al reproductor.
-     */
-
     Column(
         modifier =
             Modifier
@@ -2209,14 +2164,12 @@ fun FullPlayerScreen(
                             if (
                                 dragAmount < -15f
                             ) {
-
                                 showQueue = true
                             }
 
                             if (
                                 dragAmount > 15f
                             ) {
-
                                 showQueue = false
                             }
                         }
@@ -2228,7 +2181,7 @@ fun FullPlayerScreen(
 
             /*
              * =================================================
-             * VISTA PRINCIPAL DEL REPRODUCTOR
+             * REPRODUCTOR
              * =================================================
              */
 
@@ -2604,27 +2557,108 @@ fun FullPlayerScreen(
                 )
 
                 /*
-                 * INDICADOR DE DESLIZAMIENTO
+                 * =================================================
+                 * BOTÓN / INDICADOR DE COLA
+                 * =================================================
                  */
 
-                Text(
-                    text =
-                        "↑ DESLIZA PARA VER LA REPRODUCCIÓN ACTUAL ↑",
+                Surface(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showQueue = true
+                            },
 
                     color =
-                        TextGray,
+                        AmoledSurface,
 
-                    fontSize =
-                        10.sp,
+                    shape =
+                        RoundedCornerShape(14.dp),
 
-                    letterSpacing =
-                        1.sp,
-
-                    modifier =
-                        Modifier.align(
-                            Alignment.CenterHorizontally
+                    border =
+                        androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            BorderGray
                         )
-                )
+                ) {
+
+                    Row(
+                        modifier =
+                            Modifier.padding(
+                                horizontal = 16.dp,
+                                vertical = 13.dp
+                            ),
+
+                        verticalAlignment =
+                            Alignment.CenterVertically
+                    ) {
+
+                        Icon(
+                            imageVector =
+                                Icons.Default.MusicNote,
+
+                            contentDescription =
+                                null,
+
+                            tint =
+                                ParaguayWhite
+                        )
+
+                        Spacer(
+                            modifier =
+                                Modifier.width(10.dp)
+                        )
+
+                        Column(
+                            modifier =
+                                Modifier.weight(1f)
+                        ) {
+
+                            Text(
+                                text =
+                                    "REPRODUCCIÓN ACTUAL",
+
+                                color =
+                                    TextWhite,
+
+                                fontSize =
+                                    13.sp,
+
+                                fontWeight =
+                                    FontWeight.Bold,
+
+                                letterSpacing =
+                                    1.sp
+                            )
+
+                            Text(
+                                text =
+                                    if (queue.size > 1)
+                                        "${queue.size} canciones en cola"
+                                    else
+                                        "Sin canciones siguientes",
+
+                                color =
+                                    TextGray,
+
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
+                        Icon(
+                            imageVector =
+                                Icons.Default.ExpandLess,
+
+                            contentDescription =
+                                null,
+
+                            tint =
+                                TextGray
+                        )
+                    }
+                }
 
                 Spacer(
                     modifier =
@@ -2641,319 +2675,661 @@ fun FullPlayerScreen(
 
             /*
              * =================================================
-             * REPRODUCCIÓN ACTUAL
+             * COLA ESTILO REPRODUCTOR
              * =================================================
              */
 
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(
-                            horizontal = 18.dp,
-                            vertical = 16.dp
-                        )
+            PlaybackQueueScreen(
+                currentSong =
+                    song,
+
+                queue =
+                    queue,
+
+                isPlaying =
+                    isPlaying,
+
+                onBack = {
+                    showQueue = false
+                },
+
+                onSongClick =
+                    onQueueSongClick
+            )
+        }
+    }
+}
+
+/*
+ * ============================================================
+ * COLA DE REPRODUCCIÓN
+ *
+ * Diseño inspirado en reproductores locales como Musicolet:
+ *
+ * - Canción actual claramente marcada.
+ * - Las siguientes aparecen debajo.
+ * - Se puede tocar cualquier canción.
+ * - La cola no altera la biblioteca.
+ * - Se mantiene AMOLED.
+ * ============================================================
+ */
+
+@Composable
+private fun PlaybackQueueScreen(
+    currentSong: Song,
+    queue: List<Song>,
+    isPlaying: Boolean,
+    onBack: () -> Unit,
+    onSongClick: (Song) -> Unit
+) {
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(
+                    AmoledBlack
+                )
+                .padding(
+                    horizontal = 18.dp,
+                    vertical = 14.dp
+                )
+    ) {
+
+        /*
+         * CABECERA
+         */
+
+        Row(
+            modifier =
+                Modifier.fillMaxWidth(),
+
+            verticalAlignment =
+                Alignment.CenterVertically
+        ) {
+
+            IconButton(
+                onClick =
+                    onBack
             ) {
 
-                Row(
-                    modifier =
-                        Modifier.fillMaxWidth(),
+                Icon(
+                    imageVector =
+                        Icons.Default.ExpandLess,
 
-                    verticalAlignment =
-                        Alignment.CenterVertically
-                ) {
+                    contentDescription =
+                        "Volver",
 
-                    IconButton(
-                        onClick = {
-                            showQueue = false
-                        }
-                    ) {
-
-                        Icon(
-                            imageVector =
-                                Icons.Default.ExpandLess,
-
-                            contentDescription =
-                                "Volver al reproductor",
-
-                            tint =
-                                TextWhite
-                        )
-                    }
-
-                    Column(
-                        modifier =
-                            Modifier.weight(1f)
-                    ) {
-
-                        Text(
-                            text =
-                                "REPRODUCCIÓN ACTUAL",
-
-                            color =
-                                TextWhite,
-
-                            fontSize =
-                                20.sp,
-
-                            fontWeight =
-                                FontWeight.Bold,
-
-                            letterSpacing =
-                                1.sp
-                        )
-
-                        Text(
-                            text =
-                                "${queue.size} canciones",
-
-                            color =
-                                TextGray,
-
-                            fontSize =
-                                12.sp
-                        )
-                    }
-                }
-
-                Spacer(
-                    modifier =
-                        Modifier.height(10.dp)
+                    tint =
+                        TextWhite
                 )
+            }
 
-                /*
-                 * INDICADOR
-                 */
-
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = 8.dp
-                            )
-                ) {
-
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .height(2.dp)
-                                .background(
-                                    ParaguayRed
-                                )
-                    )
-
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .height(2.dp)
-                                .background(
-                                    ParaguayWhite
-                                )
-                    )
-
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .height(2.dp)
-                                .background(
-                                    ParaguayBlue
-                                )
-                    )
-                }
-
-                Spacer(
-                    modifier =
-                        Modifier.height(12.dp)
-                )
-
-                if (
-                    queue.isEmpty()
-                ) {
-
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-
-                        contentAlignment =
-                            Alignment.Center
-                    ) {
-
-                        Text(
-                            text =
-                                "NO HAY REPRODUCCIÓN ACTUAL",
-
-                            color =
-                                TextGray,
-
-                            fontSize =
-                                12.sp
-                        )
-                    }
-
-                } else {
-
-                    LazyColumn(
-                        modifier =
-                            Modifier.weight(1f),
-
-                        contentPadding =
-                            PaddingValues(
-                                bottom = 20.dp
-                            )
-                    ) {
-
-                        items(
-                            items =
-                                queue,
-
-                            key = {
-                                it.id
-                            }
-                        ) { queueSong ->
-
-                            val isCurrent =
-                                queueSong.id ==
-                                    song.id
-
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-
-                                            onQueueSongClick(
-                                                queueSong
-                                            )
-                                        }
-                                        .padding(
-                                            vertical = 9.dp
-                                        ),
-
-                                verticalAlignment =
-                                    Alignment.CenterVertically
-                            ) {
-
-                                AlbumArt(
-                                    song =
-                                        queueSong,
-
-                                    size =
-                                        55.dp
-                                )
-
-                                Spacer(
-                                    modifier =
-                                        Modifier.width(12.dp)
-                                )
-
-                                Column(
-                                    modifier =
-                                        Modifier.weight(1f)
-                                ) {
-
-                                    Text(
-                                        text =
-                                            queueSong.title,
-
-                                        color =
-                                            if (isCurrent)
-                                                TextWhite
-                                            else
-                                                TextGray,
-
-                                        fontSize =
-                                            15.sp,
-
-                                        fontWeight =
-                                            if (isCurrent)
-                                                FontWeight.Bold
-                                            else
-                                                FontWeight.Normal,
-
-                                        maxLines =
-                                            2
-                                    )
-
-                                    Text(
-                                        text =
-                                            queueSong.artist,
-
-                                        color =
-                                            TextGrayDark,
-
-                                        fontSize =
-                                            12.sp,
-
-                                        maxLines =
-                                            1
-                                    )
-                                }
-
-                                if (
-                                    isCurrent
-                                ) {
-
-                                    Text(
-                                        text =
-                                            "▶",
-
-                                        color =
-                                            TextWhite,
-
-                                        fontSize =
-                                            14.sp,
-
-                                        modifier =
-                                            Modifier.padding(
-                                                end = 8.dp
-                                            )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+            Column(
+                modifier =
+                    Modifier.weight(1f)
+            ) {
 
                 Text(
                     text =
-                        "↓ DESLIZA HACIA ABAJO PARA VOLVER",
+                        "REPRODUCCIÓN ACTUAL",
+
+                    color =
+                        TextWhite,
+
+                    fontSize =
+                        21.sp,
+
+                    fontWeight =
+                        FontWeight.Bold,
+
+                    letterSpacing =
+                        1.sp
+                )
+
+                Text(
+                    text =
+                        if (queue.size == 1)
+                            "1 canción"
+                        else
+                            "${queue.size} canciones",
 
                     color =
                         TextGray,
 
                     fontSize =
-                        10.sp,
+                        12.sp
+                )
+            }
+        }
 
-                    letterSpacing =
-                        1.sp,
+        Spacer(
+            modifier =
+                Modifier.height(8.dp)
+        )
 
-                    modifier =
-                        Modifier.align(
-                            Alignment.CenterHorizontally
+        /*
+         * LÍNEA PARAGUAYA
+         */
+
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(
+                        RoundedCornerShape(2.dp)
+                    )
+        ) {
+
+            Box(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(
+                            ParaguayRed
                         )
+            )
+
+            Box(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(
+                            ParaguayWhite
+                        )
+            )
+
+            Box(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(
+                            ParaguayBlue
+                        )
+            )
+        }
+
+        Spacer(
+            modifier =
+                Modifier.height(18.dp)
+        )
+
+        /*
+         * CANCIÓN ACTUAL
+         */
+
+        Text(
+            text =
+                "SONANDO AHORA",
+
+            color =
+                ParaguayWhite,
+
+            fontSize =
+                11.sp,
+
+            fontWeight =
+                FontWeight.Bold,
+
+            letterSpacing =
+                1.5.sp
+        )
+
+        Spacer(
+            modifier =
+                Modifier.height(8.dp)
+        )
+
+        CurrentQueueSong(
+            song =
+                currentSong,
+
+            isPlaying =
+                isPlaying,
+
+            onClick = {
+                onSongClick(
+                    currentSong
+                )
+            }
+        )
+
+        Spacer(
+            modifier =
+                Modifier.height(20.dp)
+        )
+
+        /*
+         * SIGUIENTES
+         */
+
+        if (
+            queue.size > 1
+        ) {
+
+            Text(
+                text =
+                    "A CONTINUACIÓN",
+
+                color =
+                    TextGray,
+
+                fontSize =
+                    11.sp,
+
+                fontWeight =
+                    FontWeight.Bold,
+
+                letterSpacing =
+                    1.5.sp
+            )
+
+            Spacer(
+                modifier =
+                    Modifier.height(7.dp)
+            )
+        }
+
+        /*
+         * Quitamos la canción actual de la lista
+         * para que no aparezca duplicada.
+         */
+
+        val upcomingSongs =
+            queue.filter {
+                it.id != currentSong.id
+            }
+
+        if (
+            upcomingSongs.isEmpty()
+        ) {
+
+            Box(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+
+                contentAlignment =
+                    Alignment.Center
+            ) {
+
+                Column(
+                    horizontalAlignment =
+                        Alignment.CenterHorizontally
+                ) {
+
+                    Icon(
+                        imageVector =
+                            Icons.Default.MusicNote,
+
+                        contentDescription =
+                            null,
+
+                        tint =
+                            TextGray,
+
+                        modifier =
+                            Modifier.size(42.dp)
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(10.dp)
+                    )
+
+                    Text(
+                        text =
+                            "NO HAY MÁS CANCIONES",
+
+                        color =
+                            TextGray,
+
+                        fontSize =
+                            12.sp
+                    )
+                }
+            }
+
+        } else {
+
+            LazyColumn(
+                modifier =
+                    Modifier.weight(1f),
+
+                contentPadding =
+                    PaddingValues(
+                        bottom = 15.dp
+                    )
+            ) {
+
+                items(
+                    items =
+                        upcomingSongs,
+
+                    key = {
+                        it.id
+                    }
+                ) { song ->
+
+                    UpcomingQueueSong(
+                        song =
+                            song,
+
+                        onClick = {
+                            onSongClick(
+                                song
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(
+            modifier =
+                Modifier.height(6.dp)
+        )
+
+        Text(
+            text =
+                "↓ DESLIZA HACIA ABAJO PARA VOLVER",
+
+            color =
+                TextGrayDark,
+
+            fontSize =
+                9.sp,
+
+            letterSpacing =
+                1.sp,
+
+            modifier =
+                Modifier.align(
+                    Alignment.CenterHorizontally
+                )
+        )
+
+        Spacer(
+            modifier =
+                Modifier.height(8.dp
+                )
+        )
+
+        TerereBrand(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = 30.dp
+                    )
+        )
+    }
+}
+
+/*
+ * ============================================================
+ * CANCIÓN ACTUAL EN LA COLA
+ * ============================================================
+ */
+
+@Composable
+private fun CurrentQueueSong(
+    song: Song,
+    isPlaying: Boolean,
+    onClick: () -> Unit
+) {
+
+    Surface(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    onClick()
+                },
+
+        color =
+            AmoledSurface,
+
+        shape =
+            RoundedCornerShape(16.dp),
+
+        border =
+            androidx.compose.foundation.BorderStroke(
+                1.dp,
+                ParaguayWhite.copy(
+                    alpha = 0.25f
+                )
+            )
+    ) {
+
+        Row(
+            modifier =
+                Modifier.padding(
+                    12.dp
+                ),
+
+            verticalAlignment =
+                Alignment.CenterVertically
+        ) {
+
+            AlbumArt(
+                song =
+                    song,
+
+                size =
+                    68.dp
+            )
+
+            Spacer(
+                modifier =
+                    Modifier.width(13.dp)
+            )
+
+            Column(
+                modifier =
+                    Modifier.weight(1f)
+            ) {
+
+                Text(
+                    text =
+                        song.title,
+
+                    color =
+                        TextWhite,
+
+                    fontSize =
+                        16.sp,
+
+                    fontWeight =
+                        FontWeight.Bold,
+
+                    maxLines =
+                        2
                 )
 
                 Spacer(
                     modifier =
-                        Modifier.height(8.dp)
+                        Modifier.height(3.dp)
                 )
 
-                TerereBrand(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = 35.dp
-                            )
+                Text(
+                    text =
+                        song.artist,
+
+                    color =
+                        TextGray,
+
+                    fontSize =
+                        13.sp,
+
+                    maxLines =
+                        1
+                )
+
+                if (
+                    song.album.isNotBlank()
+                ) {
+
+                    Text(
+                        text =
+                            song.album,
+
+                        color =
+                            TextGrayDark,
+
+                        fontSize =
+                            11.sp,
+
+                        maxLines =
+                            1
+                    )
+                }
+            }
+
+            Icon(
+                imageVector =
+                    if (isPlaying)
+                        Icons.Default.Pause
+                    else
+                        Icons.Default.PlayArrow,
+
+                contentDescription =
+                    null,
+
+                tint =
+                    ParaguayWhite,
+
+                modifier =
+                    Modifier
+                        .size(27.dp)
+                        .padding(
+                            end = 2.dp
+                        )
+            )
+        }
+    }
+}
+
+/*
+ * ============================================================
+ * PRÓXIMA CANCIÓN
+ * ============================================================
+ */
+
+@Composable
+private fun UpcomingQueueSong(
+    song: Song,
+    onClick: () -> Unit
+) {
+
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    onClick()
+                }
+                .padding(
+                    vertical = 8.dp
+                ),
+
+        verticalAlignment =
+            Alignment.CenterVertically
+    ) {
+
+        AlbumArt(
+            song =
+                song,
+
+            size =
+                56.dp
+        )
+
+        Spacer(
+            modifier =
+                Modifier.width(13.dp)
+        )
+
+        Column(
+            modifier =
+                Modifier.weight(1f)
+        ) {
+
+            Text(
+                text =
+                    song.title,
+
+                color =
+                    TextWhite,
+
+                fontSize =
+                    15.sp,
+
+                maxLines =
+                    2
+            )
+
+            Spacer(
+                modifier =
+                    Modifier.height(2.dp)
+            )
+
+            Text(
+                text =
+                    song.artist,
+
+                color =
+                    TextGray,
+
+                fontSize =
+                    12.sp,
+
+                maxLines =
+                    1
+            )
+
+            if (
+                song.album.isNotBlank()
+            ) {
+
+                Text(
+                    text =
+                        song.album,
+
+                    color =
+                        TextGrayDark,
+
+                    fontSize =
+                        10.sp,
+
+                    maxLines =
+                        1
                 )
             }
         }
+
+        Text(
+            text =
+                formatTime(
+                    song.duration
+                ),
+
+            color =
+                TextGrayDark,
+
+            fontSize =
+                11.sp,
+
+            modifier =
+                Modifier.padding(
+                    start = 8.dp
+                )
+        )
     }
 }
 
