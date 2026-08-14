@@ -2,16 +2,20 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Música almacenada en el dispositivo -->
     <uses-permission
         android:name="android.permission.READ_MEDIA_AUDIO" />
 
+    <!-- Compatibilidad con Android 12 y anteriores -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <!-- Notificaciones -->
     <uses-permission
         android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Reproducción mediante servicio -->
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE" />
 
@@ -24,8 +28,9 @@
         android:theme="@style/Theme.BlackWalkMusic"
         android:supportsRtl="true">
 
+        <!-- Pantalla principal -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.blackwalkmusic.MainActivity"
             android:exported="true">
 
             <intent-filter>
@@ -40,8 +45,9 @@
 
         </activity>
 
+        <!-- Servicio de reproducción Media3 -->
         <service
-            android:name=".MusicService"
+            android:name="com.blackwalkmusic.MusicService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
 
