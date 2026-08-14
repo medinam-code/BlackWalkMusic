@@ -185,7 +185,7 @@ class MainActivity : ComponentActivity() {
 
         val mediaController = controller ?: return
 
-        if (mediaController.hasNextMediaItem) {
+        if (mediaController.hasNextMediaItem()) {
             mediaController.seekToNextMediaItem()
             mediaController.play()
         }
@@ -200,7 +200,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        if (mediaController.hasPreviousMediaItem) {
+        if (mediaController.hasPreviousMediaItem()) {
             mediaController.seekToPreviousMediaItem()
             mediaController.play()
         }
