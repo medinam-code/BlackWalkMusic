@@ -1,5 +1,7 @@
 package com.blackwalkmusic
 
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 
@@ -10,10 +12,29 @@ class MusicService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        mediaSession = MediaSession.Builder(
+        val player = MusicPlayer.getPlayer(this)
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags =
+                Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        val sessionActivity = PendingIntent.getActivity(
             this,
-            MusicPlayer.getPlayer(this)
-        ).build()
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or
+                PendingIntent.FLAG_IMMUTABLE
+        )
+
+        mediaSession =
+            MediaSession.Builder(
+                this,
+                player
+            )
+                .setSessionActivity(sessionActivity)
+                .build()
     }
 
     override fun onGetSession(
@@ -23,6 +44,7 @@ class MusicService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+
         mediaSession?.release()
         mediaSession = null
 
