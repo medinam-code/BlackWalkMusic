@@ -7,18 +7,25 @@ object MusicPlayer {
 
     private var player: ExoPlayer? = null
 
-    fun getPlayer(context: Context): ExoPlayer {
+    fun getPlayer(
+        context: Context
+    ): ExoPlayer {
 
         if (player == null) {
-            player = ExoPlayer.Builder(context.applicationContext)
-                .build()
+
+            player =
+                ExoPlayer.Builder(
+                    context.applicationContext
+                ).build()
         }
 
         return player!!
     }
 
     fun release() {
+
         player?.release()
+
         player = null
     }
 }
