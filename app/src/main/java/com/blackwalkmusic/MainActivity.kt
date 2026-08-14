@@ -10,12 +10,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -83,6 +88,9 @@ class MainActivity : ComponentActivity() {
                 },
                 onPrevious = {
                     previousSong()
+                },
+                onShuffle = {
+                    shuffleSongs()
                 }
             )
         }
@@ -148,8 +156,8 @@ class MainActivity : ComponentActivity() {
         }
 
         val mediaItems =
-            songs.map { currentSong ->
-                MediaItem.fromUri(currentSong.uri)
+            songs.map {
+                MediaItem.fromUri(it.uri)
             }
 
         val startIndex =
@@ -206,6 +214,37 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun shuffleSongs() {
+
+        val mediaController = controller ?: return
+
+        if (songs.isEmpty()) {
+            return
+        }
+
+        val shuffledSongs =
+            songs.shuffled()
+
+        val mediaItems =
+            shuffledSongs.map {
+                MediaItem.fromUri(it.uri)
+            }
+
+        mediaController.setMediaItems(
+            mediaItems,
+            0,
+            0L
+        )
+
+        mediaController.prepare()
+        mediaController.play()
+
+        currentSong =
+            shuffledSongs.firstOrNull()
+
+        isPlaying = true
+    }
+
     private fun requestMusicPermission() {
 
         val permissions =
@@ -250,6 +289,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private enum class SongSort {
+
+    TITLE,
+    ARTIST,
+    ALBUM,
+    DURATION
+}
+
 @Composable
 fun BlackWalkMusicScreen(
     songs: List<Song>,
@@ -258,15 +305,84 @@ fun BlackWalkMusicScreen(
     onSongClick: (Song) -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
-    onPrevious: () -> Unit
+    onPrevious: () -> Unit,
+    onShuffle: () -> Unit
 ) {
 
+    var searchText by remember {
+        mutableStateOf("")
+    }
+
+    var sortMode by remember {
+        mutableStateOf(SongSort.TITLE)
+    }
+
+    var showSortMenu by remember {
+        mutableStateOf(false)
+    }
+
+    val filteredSongs =
+        remember(
+            songs,
+            searchText,
+            sortMode
+        ) {
+
+            val query =
+                searchText.trim()
+
+            val filtered =
+                if (query.isEmpty()) {
+                    songs
+                } else {
+                    songs.filter { song ->
+
+                        song.title.contains(
+                            query,
+                            ignoreCase = true
+                        ) ||
+                                song.artist.contains(
+                                    query,
+                                    ignoreCase = true
+                                ) ||
+                                song.album.contains(
+                                    query,
+                                    ignoreCase = true
+                                )
+                    }
+                }
+
+            when (sortMode) {
+
+                SongSort.TITLE ->
+                    filtered.sortedBy {
+                        it.title.lowercase()
+                    }
+
+                SongSort.ARTIST ->
+                    filtered.sortedBy {
+                        it.artist.lowercase()
+                    }
+
+                SongSort.ALBUM ->
+                    filtered.sortedBy {
+                        it.album.lowercase()
+                    }
+
+                SongSort.DURATION ->
+                    filtered.sortedByDescending {
+                        it.duration
+                    }
+            }
+        }
+
     MaterialTheme(
-        colorScheme = darkColorScheme(
-            background = Color.Black,
-            surface = Color(0xFF111111),
-            primary = Color.White
-        )
+        colorScheme =
+            darkColorScheme(
+                background = Color.Black,
+                surface = Color(0xFF111111),
+                primary = Color.White
+            )
     ) {
 
         Surface(
@@ -275,71 +391,318 @@ fun BlackWalkMusicScreen(
         ) {
 
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(
-                        horizontal = 18.dp,
-                        vertical = 18.dp
-                    )
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(
+                            horizontal = 18.dp,
+                            vertical = 18.dp
+                        )
             ) {
 
-                Text(
-                    text = "BLACKWALK",
-                    color = Color.White,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment =
+                        Alignment.CenterVertically
+                ) {
 
-                Text(
-                    text = "MUSIC",
-                    color = Color.Gray,
-                    fontSize = 13.sp,
-                    letterSpacing = 4.sp
-                )
-
-                Spacer(
-                    modifier = Modifier.height(24.dp)
-                )
-
-                Text(
-                    text = "Canciones",
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
-
-                if (songs.isEmpty()) {
-
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        modifier =
+                            Modifier.weight(1f)
                     ) {
 
                         Text(
-                            text = "No se encontraron canciones",
-                            color = Color.Gray
+                            text = "BLACKWALK",
+                            color = Color.White,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold
                         )
+
+                        Text(
+                            text = "MUSIC",
+                            color = Color.Gray,
+                            fontSize = 13.sp,
+                            letterSpacing = 4.sp
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onShuffle
+                    ) {
+
+                        Icon(
+                            imageVector =
+                                Icons.Default.Shuffle,
+                            contentDescription =
+                                "Reproducción aleatoria",
+                            tint = Color.White
+                        )
+                    }
+                }
+
+                Spacer(
+                    modifier =
+                        Modifier.height(18.dp)
+                )
+
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = {
+                        searchText = it
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = {
+
+                        Icon(
+                            imageVector =
+                                Icons.Default.Search,
+                            contentDescription =
+                                null
+                        )
+                    },
+                    trailingIcon = {
+
+                        if (searchText.isNotEmpty()) {
+
+                            IconButton(
+                                onClick = {
+                                    searchText = ""
+                                }
+                            ) {
+
+                                Icon(
+                                    imageVector =
+                                        Icons.Default.Clear,
+                                    contentDescription =
+                                        "Limpiar búsqueda"
+                                )
+                            }
+                        }
+                    },
+                    placeholder = {
+
+                        Text(
+                            text =
+                                "Buscar canción, artista o álbum"
+                        )
+                    },
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedTextColor =
+                                Color.White,
+                            unfocusedTextColor =
+                                Color.White,
+                            focusedBorderColor =
+                                Color.White,
+                            unfocusedBorderColor =
+                                Color(0xFF444444),
+                            focusedLeadingIconColor =
+                                Color.White,
+                            unfocusedLeadingIconColor =
+                                Color.Gray,
+                            focusedTrailingIconColor =
+                                Color.White,
+                            unfocusedTrailingIconColor =
+                                Color.Gray,
+                            focusedPlaceholderColor =
+                                Color.Gray,
+                            unfocusedPlaceholderColor =
+                                Color.Gray,
+                            cursorColor =
+                                Color.White
+                        ),
+                    shape =
+                        RoundedCornerShape(14.dp)
+                )
+
+                Spacer(
+                    modifier =
+                        Modifier.height(14.dp)
+                )
+
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+                    verticalAlignment =
+                        Alignment.CenterVertically
+                ) {
+
+                    Column(
+                        modifier =
+                            Modifier.weight(1f)
+                    ) {
+
+                        Text(
+                            text = "Biblioteca",
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            text =
+                                if (
+                                    searchText.isEmpty()
+                                ) {
+                                    "${songs.size} canciones"
+                                } else {
+                                    "${filteredSongs.size} resultados"
+                                },
+                            color = Color.Gray,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    Box {
+
+                        IconButton(
+                            onClick = {
+                                showSortMenu =
+                                    !showSortMenu
+                            }
+                        ) {
+
+                            Icon(
+                                imageVector =
+                                    Icons.Default.Sort,
+                                contentDescription =
+                                    "Ordenar",
+                                tint = Color.White
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded =
+                                showSortMenu,
+                            onDismissRequest = {
+                                showSortMenu = false
+                            }
+                        ) {
+
+                            DropdownMenuItem(
+                                text = {
+                                    Text("Título")
+                                },
+                                onClick = {
+                                    sortMode =
+                                        SongSort.TITLE
+                                    showSortMenu =
+                                        false
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Text("Artista")
+                                },
+                                onClick = {
+                                    sortMode =
+                                        SongSort.ARTIST
+                                    showSortMenu =
+                                        false
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Text("Álbum")
+                                },
+                                onClick = {
+                                    sortMode =
+                                        SongSort.ALBUM
+                                    showSortMenu =
+                                        false
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Text("Duración")
+                                },
+                                onClick = {
+                                    sortMode =
+                                        SongSort.DURATION
+                                    showSortMenu =
+                                        false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(
+                    modifier =
+                        Modifier.height(8.dp)
+                )
+
+                if (filteredSongs.isEmpty()) {
+
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                        contentAlignment =
+                            Alignment.Center
+                    ) {
+
+                        Column(
+                            horizontalAlignment =
+                                Alignment.CenterHorizontally
+                        ) {
+
+                            Icon(
+                                imageVector =
+                                    Icons.Default.MusicNote,
+                                contentDescription =
+                                    null,
+                                tint =
+                                    Color.DarkGray,
+                                modifier =
+                                    Modifier.size(60.dp)
+                            )
+
+                            Spacer(
+                                modifier =
+                                    Modifier.height(12.dp)
+                            )
+
+                            Text(
+                                text =
+                                    if (
+                                        searchText.isEmpty()
+                                    ) {
+                                        "No se encontraron canciones"
+                                    } else {
+                                        "No hay resultados"
+                                    },
+                                color = Color.Gray
+                            )
+                        }
                     }
 
                 } else {
 
                     LazyColumn(
-                        modifier = Modifier.weight(1f)
+                        modifier =
+                            Modifier.weight(1f)
                     ) {
 
                         items(
-                            items = songs,
-                            key = { it.id }
+                            items = filteredSongs,
+                            key = {
+                                it.id
+                            }
                         ) { song ->
 
                             SongItem(
                                 song = song,
                                 isCurrent =
-                                    currentSong?.id == song.id,
+                                    currentSong?.id ==
+                                            song.id,
                                 onClick = {
                                     onSongClick(song)
                                 }
@@ -371,44 +734,53 @@ fun SongItem(
 ) {
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                onClick()
-            }
-            .padding(
-                vertical = 9.dp
-            ),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    onClick()
+                }
+                .padding(
+                    vertical = 9.dp
+                ),
+        verticalAlignment =
+            Alignment.CenterVertically
     ) {
 
         Box(
-            modifier = Modifier
-                .size(58.dp)
-                .background(
-                    Color(0xFF202020)
-                ),
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .size(58.dp)
+                    .background(
+                        Color(0xFF202020)
+                    ),
+            contentAlignment =
+                Alignment.Center
         ) {
 
             Icon(
-                imageVector = Icons.Default.MusicNote,
-                contentDescription = null,
+                imageVector =
+                    Icons.Default.MusicNote,
+                contentDescription =
+                    null,
                 tint =
                     if (isCurrent)
                         Color.White
                     else
                         Color.Gray,
-                modifier = Modifier.size(30.dp)
+                modifier =
+                    Modifier.size(30.dp)
             )
         }
 
         Spacer(
-            modifier = Modifier.width(14.dp)
+            modifier =
+                Modifier.width(14.dp)
         )
 
         Column(
-            modifier = Modifier.weight(1f)
+            modifier =
+                Modifier.weight(1f)
         ) {
 
             Text(
@@ -433,6 +805,16 @@ fun SongItem(
                 fontSize = 13.sp,
                 maxLines = 1
             )
+
+            if (song.album.isNotBlank()) {
+
+                Text(
+                    text = song.album,
+                    color = Color.DarkGray,
+                    fontSize = 11.sp,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
@@ -447,47 +829,60 @@ fun MiniPlayer(
 ) {
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF181818),
-        shape = MaterialTheme.shapes.large
+        modifier =
+            Modifier.fillMaxWidth(),
+        color =
+            Color(0xFF181818),
+        shape =
+            MaterialTheme.shapes.large
     ) {
 
         Column(
-            modifier = Modifier.padding(12.dp)
+            modifier =
+                Modifier.padding(12.dp)
         ) {
 
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 Box(
-                    modifier = Modifier
-                        .size(55.dp)
-                        .background(
-                            Color(0xFF292929)
-                        ),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier
+                            .size(55.dp)
+                            .background(
+                                Color(0xFF292929)
+                            ),
+                    contentAlignment =
+                        Alignment.Center
                 ) {
 
                     Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = null,
-                        tint = Color.Gray
+                        imageVector =
+                            Icons.Default.MusicNote,
+                        contentDescription =
+                            null,
+                        tint =
+                            Color.Gray
                     )
                 }
 
                 Spacer(
-                    modifier = Modifier.width(12.dp)
+                    modifier =
+                        Modifier.width(12.dp)
                 )
 
                 Column(
-                    modifier = Modifier.weight(1f)
+                    modifier =
+                        Modifier.weight(1f)
                 ) {
 
                     Text(
                         text = song.title,
                         color = Color.White,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight =
+                            FontWeight.Bold,
                         maxLines = 1
                     )
 
@@ -501,9 +896,12 @@ fun MiniPlayer(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                modifier =
+                    Modifier.fillMaxWidth(),
+                horizontalArrangement =
+                    Arrangement.Center,
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 IconButton(
@@ -511,9 +909,12 @@ fun MiniPlayer(
                 ) {
 
                     Icon(
-                        imageVector = Icons.Default.SkipPrevious,
-                        contentDescription = "Anterior",
-                        tint = Color.White
+                        imageVector =
+                            Icons.Default.SkipPrevious,
+                        contentDescription =
+                            "Anterior",
+                        tint =
+                            Color.White
                     )
                 }
 
@@ -532,8 +933,10 @@ fun MiniPlayer(
                                 "Pausar"
                             else
                                 "Reproducir",
-                        tint = Color.White,
-                        modifier = Modifier.size(34.dp)
+                        tint =
+                            Color.White,
+                        modifier =
+                            Modifier.size(34.dp)
                     )
                 }
 
@@ -542,9 +945,12 @@ fun MiniPlayer(
                 ) {
 
                     Icon(
-                        imageVector = Icons.Default.SkipNext,
-                        contentDescription = "Siguiente",
-                        tint = Color.White
+                        imageVector =
+                            Icons.Default.SkipNext,
+                        contentDescription =
+                            "Siguiente",
+                        tint =
+                            Color.White
                     )
                 }
             }
