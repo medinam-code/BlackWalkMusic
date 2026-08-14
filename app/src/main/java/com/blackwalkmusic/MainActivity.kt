@@ -1,10 +1,13 @@
 package com.blackwalkmusic
 
 import android.content.ComponentName
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,7 +28,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,6 +42,8 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -152,21 +161,19 @@ class MainActivity : ComponentActivity() {
         val mediaController =
             controller ?: return
 
-        val index =
-            mediaController.currentMediaItemIndex
+        val mediaItem =
+            mediaController.currentMediaItem
 
-        if (
-            index >= 0 &&
-            index < songs.size
-        ) {
+        val currentUri =
+            mediaItem
+                ?.localConfiguration
+                ?.uri
+                ?.toString()
 
-            currentSong =
-                songs[index]
-
-        } else {
-
-            currentSong = null
-        }
+        currentSong =
+            songs.find {
+                it.uri == currentUri
+            }
 
         isPlaying =
             mediaController.isPlaying
@@ -212,8 +219,11 @@ class MainActivity : ComponentActivity() {
             controller ?: return
 
         if (mediaController.isPlaying) {
+
             mediaController.pause()
+
         } else {
+
             mediaController.play()
         }
     }
@@ -238,8 +248,7 @@ class MainActivity : ComponentActivity() {
             controller ?: return
 
         if (
-            mediaController.currentPosition >
-            3000L
+            mediaController.currentPosition > 3000L
         ) {
 
             mediaController.seekTo(0L)
@@ -345,16 +354,156 @@ class MainActivity : ComponentActivity() {
 private enum class SongSort {
 
     TITLE,
-
     ARTIST,
-
     ALBUM,
-
     DURATION,
-
     NEWEST,
-
     OLDEST
+}
+
+@Composable
+fun AlbumArtwork(
+    song: Song,
+    modifier: Modifier = Modifier
+) {
+
+    val context =
+        LocalContext.current
+
+    var artworkBytes by remember(
+        song.uri
+    ) {
+        mutableStateOf<ByteArray?>(null)
+    }
+
+    LaunchedEffect(
+        song.uri
+    ) {
+
+        artworkBytes =
+            withContext(
+                Dispatchers.IO
+            ) {
+
+                try {
+
+                    val retriever =
+                        MediaMetadataRetriever()
+
+                    retriever.setDataSource(
+                        context,
+                        Uri.parse(song.uri)
+                    )
+
+                    val picture =
+                        retriever.embeddedPicture
+
+                    retriever.release()
+
+                    picture
+
+                } catch (
+                    e: Exception
+                ) {
+
+                    null
+                }
+            }
+    }
+
+    if (
+        artworkBytes != null
+    ) {
+
+        val bitmap =
+            remember(
+                artworkBytes
+            ) {
+
+                android.graphics.BitmapFactory
+                    .decodeByteArray(
+                        artworkBytes,
+                        0,
+                        artworkBytes!!.size
+                    )
+            }
+
+        if (bitmap != null) {
+
+            Image(
+
+                bitmap =
+                    bitmap.asImageBitmap(),
+
+                contentDescription =
+                    "Carátula de ${song.title}",
+
+                contentScale =
+                    ContentScale.Crop,
+
+                modifier =
+                    modifier
+                        .clip(
+                            RoundedCornerShape(
+                                10.dp
+                            )
+                        )
+            )
+
+        } else {
+
+            ArtworkPlaceholder(
+                modifier
+            )
+        }
+
+    } else {
+
+        ArtworkPlaceholder(
+            modifier
+        )
+    }
+}
+
+@Composable
+private fun ArtworkPlaceholder(
+    modifier: Modifier
+) {
+
+    Box(
+
+        modifier =
+            modifier
+                .clip(
+                    RoundedCornerShape(
+                        10.dp
+                    )
+                )
+                .background(
+                    Color(0xFF202020)
+                ),
+
+        contentAlignment =
+            Alignment.Center
+    ) {
+
+        Icon(
+
+            imageVector =
+                Icons.Default.MusicNote,
+
+            contentDescription =
+                null,
+
+            tint =
+                Color.Gray,
+
+            modifier =
+                Modifier.size(
+                    30.dp
+                )
+        )
+    }
 }
 
 @Composable
@@ -458,16 +607,25 @@ fun BlackWalkMusicScreen(
 
         colorScheme =
             darkColorScheme(
-                background = Color.Black,
-                surface = Color(0xFF111111),
-                primary = Color.White
+
+                background =
+                    Color.Black,
+
+                surface =
+                    Color(0xFF111111),
+
+                primary =
+                    Color.White
             )
     ) {
 
         Surface(
+
             modifier =
                 Modifier.fillMaxSize(),
-            color = Color.Black
+
+            color =
+                Color.Black
         ) {
 
             Column(
@@ -497,6 +655,7 @@ fun BlackWalkMusicScreen(
                     ) {
 
                         Text(
+
                             text =
                                 "BLACKWALK",
 
@@ -511,6 +670,7 @@ fun BlackWalkMusicScreen(
                         )
 
                         Text(
+
                             text =
                                 "MUSIC",
 
@@ -526,11 +686,13 @@ fun BlackWalkMusicScreen(
                     }
 
                     IconButton(
+
                         onClick =
                             onShuffle
                     ) {
 
                         Icon(
+
                             imageVector =
                                 Icons.Default.Shuffle,
 
@@ -545,7 +707,9 @@ fun BlackWalkMusicScreen(
 
                 Spacer(
                     modifier =
-                        Modifier.height(18.dp)
+                        Modifier.height(
+                            18.dp
+                        )
                 )
 
                 OutlinedTextField(
@@ -566,6 +730,7 @@ fun BlackWalkMusicScreen(
                     leadingIcon = {
 
                         Icon(
+
                             imageVector =
                                 Icons.Default.Search,
 
@@ -581,12 +746,14 @@ fun BlackWalkMusicScreen(
                         ) {
 
                             IconButton(
+
                                 onClick = {
                                     searchText = ""
                                 }
                             ) {
 
                                 Icon(
+
                                     imageVector =
                                         Icons.Default.Clear,
 
@@ -643,12 +810,16 @@ fun BlackWalkMusicScreen(
                         ),
 
                     shape =
-                        RoundedCornerShape(14.dp)
+                        RoundedCornerShape(
+                            14.dp
+                        )
                 )
 
                 Spacer(
                     modifier =
-                        Modifier.height(14.dp)
+                        Modifier.height(
+                            14.dp
+                        )
                 )
 
                 Row(
@@ -667,6 +838,7 @@ fun BlackWalkMusicScreen(
                     ) {
 
                         Text(
+
                             text =
                                 "Biblioteca",
 
@@ -681,6 +853,7 @@ fun BlackWalkMusicScreen(
                         )
 
                         Text(
+
                             text =
                                 if (
                                     searchText.isEmpty()
@@ -731,6 +904,7 @@ fun BlackWalkMusicScreen(
                                 showSortMenu,
 
                             onDismissRequest = {
+
                                 showSortMenu =
                                     false
                             }
@@ -851,7 +1025,9 @@ fun BlackWalkMusicScreen(
 
                 Spacer(
                     modifier =
-                        Modifier.height(8.dp)
+                        Modifier.height(
+                            8.dp
+                        )
                 )
 
                 if (
@@ -887,12 +1063,16 @@ fun BlackWalkMusicScreen(
                                     Color.DarkGray,
 
                                 modifier =
-                                    Modifier.size(60.dp)
+                                    Modifier.size(
+                                        60.dp
+                                    )
                             )
 
                             Spacer(
                                 modifier =
-                                    Modifier.height(12.dp)
+                                    Modifier.height(
+                                        12.dp
+                                    )
                             )
 
                             Text(
@@ -942,7 +1122,7 @@ fun BlackWalkMusicScreen(
 
                                 isCurrent =
                                     currentSong?.id ==
-                                            song.id,
+                                        song.id,
 
                                 onClick = {
                                     onSongClick(song)
@@ -1002,45 +1182,26 @@ fun SongItem(
             Alignment.CenterVertically
     ) {
 
-        Box(
+        AlbumArtwork(
+
+            song =
+                song,
 
             modifier =
-                Modifier
-                    .size(58.dp)
-                    .background(
-                        Color(0xFF202020)
-                    ),
-
-            contentAlignment =
-                Alignment.Center
-        ) {
-
-            Icon(
-
-                imageVector =
-                    Icons.Default.MusicNote,
-
-                contentDescription =
-                    null,
-
-                tint =
-
-                    if (isCurrent)
-                        Color.White
-                    else
-                        Color.Gray,
-
-                modifier =
-                    Modifier.size(30.dp)
-            )
-        }
+                Modifier.size(
+                    58.dp
+                )
+        )
 
         Spacer(
             modifier =
-                Modifier.width(14.dp)
+                Modifier.width(
+                    14.dp
+                )
         )
 
         Column(
+
             modifier =
                 Modifier.weight(1f)
         ) {
@@ -1133,7 +1294,9 @@ fun MiniPlayer(
         Column(
 
             modifier =
-                Modifier.padding(12.dp)
+                Modifier.padding(
+                    12.dp
+                )
         ) {
 
             Row(
@@ -1142,35 +1305,22 @@ fun MiniPlayer(
                     Alignment.CenterVertically
             ) {
 
-                Box(
+                AlbumArtwork(
+
+                    song =
+                        song,
 
                     modifier =
-                        Modifier
-                            .size(55.dp)
-                            .background(
-                                Color(0xFF292929)
-                            ),
-
-                    contentAlignment =
-                        Alignment.Center
-                ) {
-
-                    Icon(
-
-                        imageVector =
-                            Icons.Default.MusicNote,
-
-                        contentDescription =
-                            null,
-
-                        tint =
-                            Color.Gray
-                    )
-                }
+                        Modifier.size(
+                            55.dp
+                        )
+                )
 
                 Spacer(
                     modifier =
-                        Modifier.width(12.dp)
+                        Modifier.width(
+                            12.dp
+                        )
                 )
 
                 Column(
@@ -1224,6 +1374,7 @@ fun MiniPlayer(
             ) {
 
                 IconButton(
+
                     onClick =
                         onPrevious
                 ) {
@@ -1242,6 +1393,7 @@ fun MiniPlayer(
                 }
 
                 IconButton(
+
                     onClick =
                         onPlayPause
                 ) {
@@ -1266,11 +1418,14 @@ fun MiniPlayer(
                             Color.White,
 
                         modifier =
-                            Modifier.size(34.dp)
+                            Modifier.size(
+                                34.dp
+                            )
                     )
                 }
 
                 IconButton(
+
                     onClick =
                         onNext
                 ) {
