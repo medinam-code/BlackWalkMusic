@@ -1,6 +1,7 @@
 package com.blackwalkmusic
 
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Intent
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -14,10 +15,20 @@ class MusicService : MediaSessionService() {
 
         val player = MusicPlayer.getPlayer(this)
 
-        val sessionIntent = Intent(
-            this,
-            MainActivity::class.java
-        ).apply {
+        /*
+         * Abrimos MainActivity mediante su nombre completo.
+         *
+         * Esto evita que MusicService tenga que importar o
+         * resolver directamente la clase MainActivity.
+         */
+        val activityComponent = ComponentName(
+            packageName,
+            "com.blackwalkmusic.MainActivity"
+        )
+
+        val sessionIntent = Intent().apply {
+            component = activityComponent
+
             addFlags(
                 Intent.FLAG_ACTIVITY_SINGLE_TOP or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -47,6 +58,7 @@ class MusicService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+
         mediaSession?.release()
         mediaSession = null
 
