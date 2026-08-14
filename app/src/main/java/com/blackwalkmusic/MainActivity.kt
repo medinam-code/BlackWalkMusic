@@ -86,10 +86,14 @@ class MainActivity : ComponentActivity() {
                     playPause()
                 },
                 onNext = {
-                    controller?.seekToNextMediaItem()
+                    controller?.seekToNextMediaItem(previousButton.setOnClickListener {
+    previousSong()
+                    })
                 },
                 onPrevious = {
-                    controller?.seekToPreviousMediaItem()
+                    controller?.seekToPreviousMediaItem(nextButton.setOnClickListener {
+    nextSong()
+                    })
                 }
             )
         }
@@ -117,7 +121,18 @@ class MainActivity : ComponentActivity() {
 
                 controller = controllerFuture.get()
 
-                controller?.addListener(playerListener)
+                controller?.addListener(playerListener) override fun onMediaItemTransition(
+    mediaItem: MediaItem?,
+    reason: Int
+ {
+    val index = controller?.currentMediaItemIndex ?: -1
+
+    if (index >= 0 && index < songs.size) {
+        currentSong = songs[index]
+        isPlaying = controller?.isPlaying == true
+    }
+}
+                                     )
 
                 isPlaying =
                     controller?.isPlaying == true
@@ -155,6 +170,29 @@ class MainActivity : ComponentActivity() {
 }
 
     private fun playPause() {
+    ...
+} private fun nextSong() {
+    val mediaController = controller ?: return
+
+    if (mediaController.hasNextMediaItem) {
+        mediaController.seekToNextMediaItem()
+        mediaController.play()
+    }
+}
+
+private fun previousSong() {
+    val mediaController = controller ?: return
+
+    if (mediaController.currentPosition > 3000) {
+        mediaController.seekTo(0)
+        return
+    }
+
+    if (mediaController.hasPreviousMediaItem) {
+        mediaController.seekToPreviousMediaItem()
+        mediaController.play()
+    }
+}
 
         val mediaController = controller ?: return
 
