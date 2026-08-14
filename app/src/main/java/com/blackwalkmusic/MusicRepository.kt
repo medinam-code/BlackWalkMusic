@@ -10,12 +10,15 @@ data class Song(
     val album: String,
     val duration: Long,
     val uri: String,
-    val albumId: Long
+    val albumId: Long,
+    val dateAdded: Long
 )
 
 object MusicRepository {
 
-    fun getSongs(contentResolver: ContentResolver): List<Song> {
+    fun getSongs(
+        contentResolver: ContentResolver
+    ): List<Song> {
 
         val songs = mutableListOf<Song>()
 
@@ -28,7 +31,8 @@ object MusicRepository {
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.ALBUM_ID
+            MediaStore.Audio.Media.ALBUM_ID,
+            MediaStore.Audio.Media.DATE_ADDED
         )
 
         val selection =
@@ -46,36 +50,81 @@ object MusicRepository {
         )?.use { cursor ->
 
             val idColumn =
-                cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media._ID
+                )
 
             val titleColumn =
-                cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+                cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media.TITLE
+                )
 
             val artistColumn =
-                cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+                cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media.ARTIST
+                )
 
             val albumColumn =
-                cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+                cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media.ALBUM
+                )
 
             val durationColumn =
-                cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+                cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media.DURATION
+                )
 
             val albumIdColumn =
-                cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
+                cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media.ALBUM_ID
+                )
+
+            val dateAddedColumn =
+                cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media.DATE_ADDED
+                )
 
             while (cursor.moveToNext()) {
 
-                val id = cursor.getLong(idColumn)
+                val id =
+                    cursor.getLong(idColumn)
 
                 songs.add(
                     Song(
                         id = id,
-                        title = cursor.getString(titleColumn) ?: "Sin título",
-                        artist = cursor.getString(artistColumn) ?: "Artista desconocido",
-                        album = cursor.getString(albumColumn) ?: "Álbum desconocido",
-                        duration = cursor.getLong(durationColumn),
-                        uri = "${MediaStore.Audio.Media.EXTERNAL_CONTENT_URI}/$id",
-                        albumId = cursor.getLong(albumIdColumn)
+
+                        title =
+                            cursor.getString(
+                                titleColumn
+                            ) ?: "Sin título",
+
+                        artist =
+                            cursor.getString(
+                                artistColumn
+                            ) ?: "Artista desconocido",
+
+                        album =
+                            cursor.getString(
+                                albumColumn
+                            ) ?: "Álbum desconocido",
+
+                        duration =
+                            cursor.getLong(
+                                durationColumn
+                            ),
+
+                        uri =
+                            "${MediaStore.Audio.Media.EXTERNAL_CONTENT_URI}/$id",
+
+                        albumId =
+                            cursor.getLong(
+                                albumIdColumn
+                            ),
+
+                        dateAdded =
+                            cursor.getLong(
+                                dateAddedColumn
+                            )
                     )
                 )
             }
