@@ -98,10 +98,13 @@ class MainActivity : ComponentActivity() {
     private fun connectToMusicService() {
 
         val sessionToken =
-            SessionToken(
-                this,
-                MusicService::class.java
-            )
+    SessionToken(
+        this,
+        android.content.ComponentName(
+            this,
+            MusicService::class.java
+        )
+    )
 
         controllerFuture =
             MediaController.Builder(
