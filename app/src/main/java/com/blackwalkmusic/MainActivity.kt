@@ -61,16 +61,7 @@ import kotlinx.coroutines.delay
  * ============================================================
  */
 
-data class Song(
-    val id: Long,
-    val title: String,
-    val artist: String,
-    val album: String,
-    val albumId: Long,
-    val duration: Long,
-    val dateAdded: Long,
-    val uri: String
-)
+
 
 /*
  * ============================================================
