@@ -6,20 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -28,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -38,31 +30,13 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Sort
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -79,27 +53,27 @@ import kotlinx.coroutines.delay
 
 /*
  * ============================================================
- * COLORES
+ * PALETA AMOLED
  * ============================================================
  */
 
 private val AmoledBlack = Color(0xFF000000)
-private val AmoledSurface = Color(0xFF090909)
-private val AmoledSurface2 = Color(0xFF111111)
+private val AmoledSurface = Color(0xFF080808)
+private val AmoledSurface2 = Color(0xFF101010)
 
-private val TextWhite = Color(0xFFF5F5F5)
-private val TextGray = Color(0xFF8A8A8A)
+private val TextWhite = Color(0xFFF2F2F2)
+private val TextGray = Color(0xFF8C8C8C)
 private val TextGrayDark = Color(0xFF555555)
 
 private val ParaguayRed = Color(0xFFD90012)
 private val ParaguayWhite = Color(0xFFF5F5F5)
 private val ParaguayBlue = Color(0xFF0038A8)
 
-private val SectionLineGray = Color(0xFF303030)
+private val BorderGray = Color(0xFF222222)
 
 /*
  * ============================================================
- * ORDENAMIENTO
+ * ORDEN
  * ============================================================
  */
 
@@ -120,13 +94,19 @@ private enum class SongSort {
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var controllerFuture: ListenableFuture<MediaController>
+    private lateinit var controllerFuture:
+        ListenableFuture<MediaController>
 
-    private var controller: MediaController? = null
+    private var controller:
+        MediaController? = null
 
-    private var songs by mutableStateOf<List<Song>>(emptyList())
+    private var songs by mutableStateOf<List<Song>>(
+        emptyList()
+    )
 
-    private var currentSong by mutableStateOf<Song?>(null)
+    private var currentSong by mutableStateOf<Song?>(
+        null
+    )
 
     private var isPlaying by mutableStateOf(false)
 
@@ -139,6 +119,10 @@ class MainActivity : ComponentActivity() {
     )
 
     private var shuffleEnabled by mutableStateOf(false)
+
+    private var favoriteIds by mutableStateOf<Set<Long>>(
+        emptySet()
+    )
 
     private val permissionLauncher =
         registerForActivityResult(
@@ -154,13 +138,13 @@ class MainActivity : ComponentActivity() {
                 isPlayingNow: Boolean
             ) {
                 isPlaying = isPlayingNow
-                updateProgress()
             }
 
             override fun onMediaItemTransition(
                 mediaItem: MediaItem?,
                 reason: Int
             ) {
+
                 updateCurrentSong()
                 updateProgress()
             }
@@ -168,34 +152,42 @@ class MainActivity : ComponentActivity() {
             override fun onPlaybackStateChanged(
                 playbackState: Int
             ) {
+
                 updateProgress()
             }
 
             override fun onRepeatModeChanged(
                 mode: Int
             ) {
+
                 repeatMode = mode
             }
 
             override fun onShuffleModeEnabledChanged(
                 shuffleModeEnabled: Boolean
             ) {
-                shuffleEnabled = shuffleModeEnabled
+
+                shuffleEnabled =
+                    shuffleModeEnabled
+            }
+
+            override fun onTimelineChanged(
+                timeline: androidx.media3.common.Timeline,
+                reason: Int
+            ) {
+
+                updateCurrentSong()
             }
         }
 
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
+
         super.onCreate(savedInstanceState)
 
-        /*
-         * La interfaz se dibuja inmediatamente.
-         *
-         * No cargamos música dentro de setContent.
-         * Esto evita que un problema del reproductor
-         * deje la pantalla bloqueada en gris.
-         */
+        favoriteIds =
+            FavoritesManager.getFavorites(this)
 
         setContent {
 
@@ -207,8 +199,11 @@ class MainActivity : ComponentActivity() {
                 isPlaying,
                 currentSong
             ) {
+
                 while (true) {
+
                     updateProgress()
+
                     delay(500)
                 }
             }
@@ -220,11 +215,28 @@ class MainActivity : ComponentActivity() {
 
                 FullPlayerScreen(
                     song = currentSong!!,
+
                     isPlaying = isPlaying,
-                    currentPosition = currentPosition,
-                    duration = duration,
-                    repeatMode = repeatMode,
-                    shuffleEnabled = shuffleEnabled,
+
+                    currentPosition =
+                        currentPosition,
+
+                    duration =
+                        duration,
+
+                    repeatMode =
+                        repeatMode,
+
+                    shuffleEnabled =
+                        shuffleEnabled,
+
+                    isFavorite =
+                        favoriteIds.contains(
+                            currentSong!!.id
+                        ),
+
+                    queue =
+                        getCurrentQueue(),
 
                     onBack = {
                         showFullPlayer = false
@@ -243,8 +255,11 @@ class MainActivity : ComponentActivity() {
                     },
 
                     onSeek = { position ->
+
                         controller?.seekTo(position)
-                        currentPosition = position
+
+                        currentPosition =
+                            position
                     },
 
                     onShuffle = {
@@ -253,6 +268,20 @@ class MainActivity : ComponentActivity() {
 
                     onRepeat = {
                         toggleRepeat()
+                    },
+
+                    onFavorite = {
+
+                        currentSong?.let {
+                            toggleFavorite(it)
+                        }
+                    },
+
+                    onQueueSongClick = { song ->
+
+                        playSongFromCurrentQueue(
+                            song
+                        )
                     }
                 )
 
@@ -260,8 +289,15 @@ class MainActivity : ComponentActivity() {
 
                 BlackWalkMusicScreen(
                     songs = songs,
-                    currentSong = currentSong,
-                    isPlaying = isPlaying,
+
+                    currentSong =
+                        currentSong,
+
+                    isPlaying =
+                        isPlaying,
+
+                    favoriteIds =
+                        favoriteIds,
 
                     onSongClick = {
                         playSong(it)
@@ -284,18 +320,21 @@ class MainActivity : ComponentActivity() {
                     },
 
                     onOpenPlayer = {
-                        if (currentSong != null) {
+
+                        if (
+                            currentSong != null
+                        ) {
+
                             showFullPlayer = true
                         }
+                    },
+
+                    onFavorite = {
+                        toggleFavorite(it)
                     }
                 )
             }
         }
-
-        /*
-         * Primero mostramos la interfaz.
-         * Después iniciamos permisos y servicio.
-         */
 
         requestMusicPermission()
 
@@ -304,83 +343,72 @@ class MainActivity : ComponentActivity() {
 
     /*
      * ========================================================
-     * MEDIA CONTROLLER
+     * MEDIA SESSION
      * ========================================================
      */
 
     private fun connectToMusicService() {
 
-        try {
-
-            val sessionToken =
-                SessionToken(
+        val sessionToken =
+            SessionToken(
+                this,
+                ComponentName(
                     this,
-                    ComponentName(
-                        this,
-                        MusicService::class.java
-                    )
+                    MusicService::class.java
                 )
-
-            controllerFuture =
-                MediaController.Builder(
-                    this,
-                    sessionToken
-                ).buildAsync()
-
-            controllerFuture.addListener(
-                {
-
-                    try {
-
-                        controller =
-                            controllerFuture.get()
-
-                        controller?.addListener(
-                            playerListener
-                        )
-
-                        controller?.let { player ->
-
-                            isPlaying =
-                                player.isPlaying
-
-                            repeatMode =
-                                player.repeatMode
-
-                            shuffleEnabled =
-                                player.shuffleModeEnabled
-                        }
-
-                        updateCurrentSong()
-                        updateProgress()
-
-                    } catch (_: Exception) {
-                        /*
-                         * Si Media3 falla, la interfaz
-                         * sigue funcionando.
-                         */
-                    }
-
-                },
-                ContextCompat.getMainExecutor(this)
             )
 
-        } catch (_: Exception) {
-            /*
-             * Evita que un problema del servicio
-             * cierre la aplicación.
-             */
-        }
+        controllerFuture =
+            MediaController.Builder(
+                this,
+                sessionToken
+            ).buildAsync()
+
+        controllerFuture.addListener(
+            {
+
+                controller =
+                    controllerFuture.get()
+
+                controller?.addListener(
+                    playerListener
+                )
+
+                isPlaying =
+                    controller?.isPlaying == true
+
+                repeatMode =
+                    controller?.repeatMode
+                        ?: Player.REPEAT_MODE_OFF
+
+                shuffleEnabled =
+                    controller?.shuffleModeEnabled == true
+
+                updateCurrentSong()
+
+                updateProgress()
+
+            },
+            ContextCompat.getMainExecutor(this)
+        )
     }
+
+    /*
+     * ========================================================
+     * CURRENT SONG
+     * ========================================================
+     */
 
     private fun updateCurrentSong() {
 
         val mediaController =
             controller ?: return
 
+        val mediaItem =
+            mediaController.currentMediaItem
+
         val uri =
-            mediaController
-                .currentMediaItem
+            mediaItem
                 ?.localConfiguration
                 ?.uri
                 ?.toString()
@@ -394,6 +422,12 @@ class MainActivity : ComponentActivity() {
             mediaController.isPlaying
     }
 
+    /*
+     * ========================================================
+     * PROGRESS
+     * ========================================================
+     */
+
     private fun updateProgress() {
 
         val mediaController =
@@ -406,7 +440,7 @@ class MainActivity : ComponentActivity() {
         duration =
             mediaController.duration
                 .takeIf {
-                    it > 0L
+                    it > 0
                 }
                 ?: currentSong?.duration
                 ?: 0L
@@ -414,7 +448,7 @@ class MainActivity : ComponentActivity() {
 
     /*
      * ========================================================
-     * REPRODUCCIÓN
+     * PLAY SONG
      * ========================================================
      */
 
@@ -429,108 +463,170 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        try {
+        val mediaItems =
+            songs.map {
+                MediaItem.fromUri(it.uri)
+            }
 
-            val mediaItems =
-                songs.map {
-                    MediaItem.fromUri(it.uri)
+        val startIndex =
+            songs.indexOfFirst {
+                it.uri == song.uri
+            }.coerceAtLeast(0)
+
+        mediaController.setMediaItems(
+            mediaItems,
+            startIndex,
+            0L
+        )
+
+        mediaController.shuffleModeEnabled =
+            false
+
+        mediaController.prepare()
+
+        mediaController.play()
+
+        currentSong =
+            song
+
+        isPlaying = true
+
+        shuffleEnabled = false
+    }
+
+    /*
+     * ========================================================
+     * PLAY SONG FROM CURRENT QUEUE
+     * ========================================================
+     */
+
+    private fun playSongFromCurrentQueue(
+        song: Song
+    ) {
+
+        val mediaController =
+            controller ?: return
+
+        val index =
+            (0 until mediaController.mediaItemCount)
+                .firstOrNull { position ->
+
+                    val uri =
+                        mediaController
+                            .getMediaItemAt(position)
+                            .localConfiguration
+                            ?.uri
+                            ?.toString()
+
+                    uri == song.uri
                 }
 
-            val startIndex =
-                songs.indexOfFirst {
-                    it.uri == song.uri
-                }.coerceAtLeast(0)
+        if (index != null) {
 
-            mediaController.setMediaItems(
-                mediaItems,
-                startIndex,
+            mediaController.seekTo(
+                index,
                 0L
             )
 
-            mediaController.prepare()
             mediaController.play()
 
-            currentSong = song
-            isPlaying = true
+            currentSong =
+                song
 
-        } catch (_: Exception) {
-            isPlaying = false
+            isPlaying = true
         }
     }
+
+    /*
+     * ========================================================
+     * PLAY / PAUSE
+     * ========================================================
+     */
 
     private fun playPause() {
 
         val mediaController =
             controller ?: return
 
-        try {
+        if (
+            mediaController.isPlaying
+        ) {
 
-            if (mediaController.isPlaying) {
-                mediaController.pause()
-            } else {
-                mediaController.play()
-            }
+            mediaController.pause()
 
-        } catch (_: Exception) {
+        } else {
+
+            mediaController.play()
         }
     }
+
+    /*
+     * ========================================================
+     * NEXT
+     * ========================================================
+     */
 
     private fun nextSong() {
 
         val mediaController =
             controller ?: return
 
-        try {
+        if (
+            mediaController.hasNextMediaItem()
+        ) {
 
-            if (
-                mediaController.hasNextMediaItem()
-            ) {
+            mediaController.seekToNextMediaItem()
 
-                mediaController.seekToNextMediaItem()
-                mediaController.play()
+            mediaController.play()
 
-            } else if (
-                mediaController.repeatMode ==
-                Player.REPEAT_MODE_ALL
-            ) {
+        } else if (
+            mediaController.repeatMode ==
+            Player.REPEAT_MODE_ALL
+        ) {
 
-                mediaController.seekToNextMediaItem()
-                mediaController.play()
-            }
+            mediaController.seekToNextMediaItem()
 
-        } catch (_: Exception) {
+            mediaController.play()
         }
     }
+
+    /*
+     * ========================================================
+     * PREVIOUS
+     * ========================================================
+     */
 
     private fun previousSong() {
 
         val mediaController =
             controller ?: return
 
-        try {
+        if (
+            mediaController.currentPosition >
+            3000L
+        ) {
 
-            if (
-                mediaController.currentPosition >
-                3000L
-            ) {
+            mediaController.seekTo(0L)
 
-                mediaController.seekTo(0L)
-                return
-            }
+            return
+        }
 
-            if (
-                mediaController.hasPreviousMediaItem()
-            ) {
+        if (
+            mediaController.hasPreviousMediaItem()
+        ) {
 
-                mediaController
-                    .seekToPreviousMediaItem()
+            mediaController
+                .seekToPreviousMediaItem()
 
-                mediaController.play()
-            }
-
-        } catch (_: Exception) {
+            mediaController.play()
         }
     }
+
+    /*
+     * ========================================================
+     * SHUFFLE
+     * ========================================================
+     */
 
     private fun shuffleSongs() {
 
@@ -541,36 +637,33 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        try {
+        val shuffledSongs =
+            songs.shuffled()
 
-            val shuffledSongs =
-                songs.shuffled()
+        val mediaItems =
+            shuffledSongs.map {
+                MediaItem.fromUri(it.uri)
+            }
 
-            val mediaItems =
-                shuffledSongs.map {
-                    MediaItem.fromUri(it.uri)
-                }
+        mediaController.setMediaItems(
+            mediaItems,
+            0,
+            0L
+        )
 
-            mediaController.setMediaItems(
-                mediaItems,
-                0,
-                0L
-            )
+        mediaController.shuffleModeEnabled =
+            true
 
-            mediaController.shuffleModeEnabled =
-                true
+        mediaController.prepare()
 
-            mediaController.prepare()
-            mediaController.play()
+        mediaController.play()
 
-            currentSong =
-                shuffledSongs.firstOrNull()
+        currentSong =
+            shuffledSongs.firstOrNull()
 
-            isPlaying = true
-            shuffleEnabled = true
+        isPlaying = true
 
-        } catch (_: Exception) {
-        }
+        shuffleEnabled = true
     }
 
     private fun toggleShuffle() {
@@ -578,53 +671,177 @@ class MainActivity : ComponentActivity() {
         val mediaController =
             controller ?: return
 
-        try {
+        mediaController.shuffleModeEnabled =
+            !mediaController.shuffleModeEnabled
 
-            mediaController.shuffleModeEnabled =
-                !mediaController.shuffleModeEnabled
-
-            shuffleEnabled =
-                mediaController.shuffleModeEnabled
-
-        } catch (_: Exception) {
-        }
+        shuffleEnabled =
+            mediaController.shuffleModeEnabled
     }
+
+    /*
+     * ========================================================
+     * REPEAT
+     * ========================================================
+     */
 
     private fun toggleRepeat() {
 
         val mediaController =
             controller ?: return
 
-        try {
+        val newMode =
+            when (
+                mediaController.repeatMode
+            ) {
 
-            val newMode =
-                when (
-                    mediaController.repeatMode
-                ) {
+                Player.REPEAT_MODE_OFF ->
+                    Player.REPEAT_MODE_ALL
 
-                    Player.REPEAT_MODE_OFF ->
-                        Player.REPEAT_MODE_ALL
+                Player.REPEAT_MODE_ALL ->
+                    Player.REPEAT_MODE_ONE
 
-                    Player.REPEAT_MODE_ALL ->
-                        Player.REPEAT_MODE_ONE
+                else ->
+                    Player.REPEAT_MODE_OFF
+            }
 
-                    else ->
-                        Player.REPEAT_MODE_OFF
-                }
+        mediaController.repeatMode =
+            newMode
 
-            mediaController.repeatMode =
-                newMode
+        repeatMode =
+            newMode
+    }
 
-            repeatMode =
-                newMode
+    /*
+     * ========================================================
+     * FAVORITES
+     * ========================================================
+     */
 
-        } catch (_: Exception) {
+    private fun toggleFavorite(
+        song: Song
+    ) {
+
+        val newState =
+            FavoritesManager.toggleFavorite(
+                this,
+                song.id
+            )
+
+        favoriteIds =
+            FavoritesManager.getFavorites(this)
+
+        /*
+         * Forzamos actualización visual.
+         */
+        if (newState) {
+
+            currentSong =
+                currentSong
+                    ?.copy()
+
         }
     }
 
     /*
      * ========================================================
-     * PERMISOS
+     * CURRENT PLAYBACK QUEUE
+     *
+     * Devuelve la cola siguiendo el orden real
+     * de reproducción, incluyendo shuffle.
+     * ========================================================
+     */
+
+    private fun getCurrentQueue(): List<Song> {
+
+        val mediaController =
+            controller ?: return emptyList()
+
+        if (
+            mediaController.mediaItemCount <= 0
+        ) {
+            return emptyList()
+        }
+
+        val result =
+            mutableListOf<Song>()
+
+        var index =
+            mediaController.currentMediaItemIndex
+
+        if (index < 0) {
+            return emptyList()
+        }
+
+        val visited =
+            mutableSetOf<Int>()
+
+        while (
+            index >= 0 &&
+            index <
+                mediaController.mediaItemCount &&
+            !visited.contains(index)
+        ) {
+
+            visited.add(index)
+
+            val mediaItem =
+                mediaController.getMediaItemAt(
+                    index
+                )
+
+            val uri =
+                mediaItem
+                    .localConfiguration
+                    ?.uri
+                    ?.toString()
+
+            songs.find {
+                it.uri == uri
+            }?.let {
+                result.add(it)
+            }
+
+            val next =
+                mediaController
+                    .getNextMediaItemIndex()
+
+            /*
+             * Media3 devuelve el siguiente índice
+             * según el modo shuffle actual.
+             */
+
+            if (
+                next < 0 ||
+                visited.contains(next)
+            ) {
+
+                break
+            }
+
+            index = next
+        }
+
+        /*
+         * Si por alguna razón la cola actual no pudo
+         * reconstruirse, mostramos al menos la canción actual.
+         */
+
+        if (
+            result.isEmpty() &&
+            currentSong != null
+        ) {
+
+            result.add(
+                currentSong!!
+            )
+        }
+
+        return result
+    }
+
+    /*
+     * ========================================================
+     * PERMISSIONS
      * ========================================================
      */
 
@@ -647,58 +864,37 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-        try {
-
-            permissionLauncher.launch(
-                permissions
-            )
-
-        } catch (_: Exception) {
-            loadMusic()
-        }
+        permissionLauncher.launch(
+            permissions
+        )
     }
 
     private fun loadMusic() {
 
-        try {
+        songs =
+            MusicRepository.getSongs(
+                contentResolver
+            )
 
-            songs =
-                MusicRepository.getSongs(
-                    contentResolver
-                )
+        favoriteIds =
+            FavoritesManager.getFavorites(this)
 
-            updateCurrentSong()
-
-        } catch (_: Exception) {
-
-            songs = emptyList()
-        }
+        updateCurrentSong()
     }
-
-    /*
-     * ========================================================
-     * DESTROY
-     * ========================================================
-     */
 
     override fun onDestroy() {
 
-        try {
+        controller?.removeListener(
+            playerListener
+        )
 
-            controller?.removeListener(
-                playerListener
+        if (
+            ::controllerFuture.isInitialized
+        ) {
+
+            MediaController.releaseFuture(
+                controllerFuture
             )
-
-            if (
-                ::controllerFuture.isInitialized
-            ) {
-
-                MediaController.releaseFuture(
-                    controllerFuture
-                )
-            }
-
-        } catch (_: Exception) {
         }
 
         controller = null
@@ -709,28 +905,18 @@ class MainActivity : ComponentActivity() {
 
 /*
  * ============================================================
- * TEMA AMOLED
- * ============================================================
- */
-
-private val AmoledColorScheme =
-    darkColorScheme(
-        primary = ParaguayBlue,
-        onPrimary = Color.White,
-        background = AmoledBlack,
-        onBackground = TextWhite,
-        surface = AmoledBlack,
-        onSurface = TextWhite
-    )
-
-/*
- * ============================================================
- * MARCA
+ * MARCA TERERÉ MUSIC PY
+ *
+ * Escalonada:
+ *
+ * TERERÉ
+ *    MUSIC
+ *       PY
  * ============================================================
  */
 
 @Composable
-private fun TerereBrand(
+fun TerereBrand(
     modifier: Modifier = Modifier
 ) {
 
@@ -738,123 +924,94 @@ private fun TerereBrand(
         modifier = modifier
     ) {
 
-        Row(
-            verticalAlignment =
-                Alignment.CenterVertically
-        ) {
+        Text(
+            text = "TERERÉ",
 
-            Text(
-                text = "TERERÉ",
-                color = ParaguayRed,
-                fontSize = 27.sp,
-                fontWeight = FontWeight.Black
-            )
+            color = ParaguayRed,
 
-            Text(
-                text = " MUSIC",
-                color = ParaguayWhite,
-                fontSize = 27.sp,
-                fontWeight = FontWeight.Black
-            )
+            fontSize = 28.sp,
 
-            Text(
-                text = " PY",
-                color = ParaguayBlue,
-                fontSize = 27.sp,
-                fontWeight = FontWeight.Black
-            )
-        }
+            fontWeight = FontWeight.Black,
 
-        ParaguayLine(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 5.dp)
+            letterSpacing = 1.sp
         )
-    }
-}
-
-/*
- * ============================================================
- * LÍNEA PARAGUAYA
- * ============================================================
- */
-
-@Composable
-private fun ParaguayLine(
-    modifier: Modifier = Modifier
-) {
-
-    Row(
-        modifier =
-            modifier.height(3.dp)
-    ) {
-
-        Box(
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(
-                        ParaguayRed
-                    )
-        )
-
-        Box(
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(
-                        ParaguayWhite
-                    )
-        )
-
-        Box(
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(
-                        ParaguayBlue
-                    )
-        )
-    }
-}
-
-/*
- * ============================================================
- * TÍTULO DE SECCIÓN
- * ============================================================
- */
-
-@Composable
-private fun SectionTitle(
-    title: String
-) {
-
-    Column(
-        modifier =
-            Modifier.fillMaxWidth()
-    ) {
 
         Text(
-            text = title,
-            color = TextWhite,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
+            text = "MUSIC",
+
+            color = ParaguayWhite,
+
+            fontSize = 28.sp,
+
+            fontWeight = FontWeight.Black,
+
+            letterSpacing = 1.sp,
+
+            modifier =
+                Modifier.padding(
+                    start = 18.dp
+                )
+        )
+
+        Text(
+            text = "PY",
+
+            color = ParaguayBlue,
+
+            fontSize = 28.sp,
+
+            fontWeight = FontWeight.Black,
+
+            letterSpacing = 1.sp,
+
+            modifier =
+                Modifier.padding(
+                    start = 48.dp
+                )
         )
 
         Spacer(
             modifier =
-                Modifier.height(7.dp)
+                Modifier.height(5.dp)
         )
 
-        ParaguayLine(
+        Row(
             modifier =
-                Modifier.fillMaxWidth()
-        )
+                Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+        ) {
+
+            Box(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(
+                            ParaguayRed
+                        )
+            )
+
+            Box(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(
+                            ParaguayWhite
+                        )
+            )
+
+            Box(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(
+                            ParaguayBlue
+                        )
+            )
+        }
     }
 }
 
@@ -865,16 +1022,18 @@ private fun SectionTitle(
  */
 
 @Composable
-private fun BlackWalkMusicScreen(
+fun BlackWalkMusicScreen(
     songs: List<Song>,
     currentSong: Song?,
     isPlaying: Boolean,
+    favoriteIds: Set<Long>,
     onSongClick: (Song) -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onShuffle: () -> Unit,
-    onOpenPlayer: () -> Unit
+    onOpenPlayer: () -> Unit,
+    onFavorite: (Song) -> Unit
 ) {
 
     var searchText by remember {
@@ -891,38 +1050,48 @@ private fun BlackWalkMusicScreen(
         mutableStateOf(false)
     }
 
+    var showFavoritesOnly by remember {
+        mutableStateOf(false)
+    }
+
     val filteredSongs =
         remember(
             songs,
             searchText,
-            sortMode
+            sortMode,
+            showFavoritesOnly,
+            favoriteIds
         ) {
 
             val query =
                 searchText.trim()
 
             val filtered =
-                if (query.isEmpty()) {
-                    songs
-                } else {
+                songs.filter { song ->
 
-                    songs.filter { song ->
+                    val matchesSearch =
+                        query.isEmpty() ||
+                            song.title.contains(
+                                query,
+                                ignoreCase = true
+                            ) ||
+                            song.artist.contains(
+                                query,
+                                ignoreCase = true
+                            ) ||
+                            song.album.contains(
+                                query,
+                                ignoreCase = true
+                            )
 
-                        song.title.contains(
-                            query,
-                            ignoreCase = true
-                        ) ||
+                    val matchesFavorite =
+                        !showFavoritesOnly ||
+                            favoriteIds.contains(
+                                song.id
+                            )
 
-                        song.artist.contains(
-                            query,
-                            ignoreCase = true
-                        ) ||
-
-                        song.album.contains(
-                            query,
-                            ignoreCase = true
-                        )
-                    }
+                    matchesSearch &&
+                        matchesFavorite
                 }
 
             when (sortMode) {
@@ -960,7 +1129,20 @@ private fun BlackWalkMusicScreen(
         }
 
     MaterialTheme(
-        colorScheme = AmoledColorScheme
+        colorScheme =
+            darkColorScheme(
+                background =
+                    AmoledBlack,
+
+                surface =
+                    AmoledSurface,
+
+                primary =
+                    ParaguayWhite,
+
+                onPrimary =
+                    Color.Black
+            )
     ) {
 
         Surface(
@@ -1011,14 +1193,14 @@ private fun BlackWalkMusicScreen(
                                 "Aleatorio",
 
                             tint =
-                                ParaguayBlue
+                                ParaguayWhite
                         )
                     }
                 }
 
                 Spacer(
                     modifier =
-                        Modifier.height(18.dp)
+                        Modifier.height(16.dp)
                 )
 
                 /*
@@ -1048,7 +1230,7 @@ private fun BlackWalkMusicScreen(
                                 null,
 
                             tint =
-                                ParaguayBlue
+                                ParaguayWhite
                         )
                     },
 
@@ -1085,7 +1267,7 @@ private fun BlackWalkMusicScreen(
                                 "Buscar canción, artista o álbum",
 
                             color =
-                                TextGrayDark
+                                TextGray
                         )
                     },
 
@@ -1099,22 +1281,22 @@ private fun BlackWalkMusicScreen(
                                 TextWhite,
 
                             focusedBorderColor =
-                                ParaguayBlue,
+                                ParaguayWhite,
 
                             unfocusedBorderColor =
-                                SectionLineGray,
+                                BorderGray,
 
                             cursorColor =
-                                ParaguayBlue
+                                ParaguayWhite
                         ),
 
                     shape =
-                        RoundedCornerShape(12.dp)
+                        RoundedCornerShape(14.dp)
                 )
 
                 Spacer(
                     modifier =
-                        Modifier.height(20.dp)
+                        Modifier.height(14.dp)
                 )
 
                 /*
@@ -1134,24 +1316,31 @@ private fun BlackWalkMusicScreen(
                             Modifier.weight(1f)
                     ) {
 
-                        SectionTitle(
-                            title = "BIBLIOTECA"
-                        )
+                        Text(
+                            text =
+                                if (
+                                    showFavoritesOnly
+                                )
+                                    "FAVORITOS"
+                                else
+                                    "BIBLIOTECA",
 
-                        Spacer(
-                            modifier =
-                                Modifier.height(5.dp)
+                            color =
+                                TextWhite,
+
+                            fontSize =
+                                22.sp,
+
+                            fontWeight =
+                                FontWeight.Bold,
+
+                            letterSpacing =
+                                1.sp
                         )
 
                         Text(
                             text =
-                                if (
-                                    searchText.isEmpty()
-                                ) {
-                                    "${songs.size} canciones"
-                                } else {
-                                    "${filteredSongs.size} resultados"
-                                },
+                                "${filteredSongs.size} canciones",
 
                             color =
                                 TextGray,
@@ -1161,10 +1350,41 @@ private fun BlackWalkMusicScreen(
                         )
                     }
 
+                    IconButton(
+                        onClick = {
+
+                            showFavoritesOnly =
+                                !showFavoritesOnly
+                        }
+                    ) {
+
+                        Icon(
+                            imageVector =
+                                if (
+                                    showFavoritesOnly
+                                )
+                                    Icons.Default.Favorite
+                                else
+                                    Icons.Default.FavoriteBorder,
+
+                            contentDescription =
+                                "Favoritos",
+
+                            tint =
+                                if (
+                                    showFavoritesOnly
+                                )
+                                    ParaguayRed
+                                else
+                                    TextGray
+                        )
+                    }
+
                     Box {
 
                         IconButton(
                             onClick = {
+
                                 showSortMenu =
                                     !showSortMenu
                             }
@@ -1187,6 +1407,7 @@ private fun BlackWalkMusicScreen(
                                 showSortMenu,
 
                             onDismissRequest = {
+
                                 showSortMenu =
                                     false
                             },
@@ -1195,66 +1416,115 @@ private fun BlackWalkMusicScreen(
                                 AmoledSurface
                         ) {
 
-                            SortItem(
-                                text = "Título",
-                                onClick = {
-                                    sortMode =
-                                        SongSort.TITLE
-                                    showSortMenu =
-                                        false
-                                }
-                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Más recientes",
+                                        color =
+                                            TextWhite
+                                    )
+                                },
 
-                            SortItem(
-                                text = "Artista",
                                 onClick = {
-                                    sortMode =
-                                        SongSort.ARTIST
-                                    showSortMenu =
-                                        false
-                                }
-                            )
 
-                            SortItem(
-                                text = "Álbum",
-                                onClick = {
-                                    sortMode =
-                                        SongSort.ALBUM
-                                    showSortMenu =
-                                        false
-                                }
-                            )
-
-                            SortItem(
-                                text = "Duración",
-                                onClick = {
-                                    sortMode =
-                                        SongSort.DURATION
-                                    showSortMenu =
-                                        false
-                                }
-                            )
-
-                            HorizontalDivider(
-                                color =
-                                    SectionLineGray
-                            )
-
-                            SortItem(
-                                text = "Más recientes",
-                                onClick = {
                                     sortMode =
                                         SongSort.NEWEST
+
                                     showSortMenu =
                                         false
                                 }
                             )
 
-                            SortItem(
-                                text = "Más antiguas",
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Más antiguas",
+                                        color =
+                                            TextWhite
+                                    )
+                                },
+
                                 onClick = {
+
                                     sortMode =
                                         SongSort.OLDEST
+
+                                    showSortMenu =
+                                        false
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Título",
+                                        color =
+                                            TextWhite
+                                    )
+                                },
+
+                                onClick = {
+
+                                    sortMode =
+                                        SongSort.TITLE
+
+                                    showSortMenu =
+                                        false
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Artista",
+                                        color =
+                                            TextWhite
+                                    )
+                                },
+
+                                onClick = {
+
+                                    sortMode =
+                                        SongSort.ARTIST
+
+                                    showSortMenu =
+                                        false
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Álbum",
+                                        color =
+                                            TextWhite
+                                    )
+                                },
+
+                                onClick = {
+
+                                    sortMode =
+                                        SongSort.ALBUM
+
+                                    showSortMenu =
+                                        false
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Duración",
+                                        color =
+                                            TextWhite
+                                    )
+                                },
+
+                                onClick = {
+
+                                    sortMode =
+                                        SongSort.DURATION
+
                                     showSortMenu =
                                         false
                                 }
@@ -1265,7 +1535,7 @@ private fun BlackWalkMusicScreen(
 
                 Spacer(
                     modifier =
-                        Modifier.height(10.dp)
+                        Modifier.height(6.dp)
                 )
 
                 /*
@@ -1297,24 +1567,23 @@ private fun BlackWalkMusicScreen(
 
                             Spacer(
                                 modifier =
-                                    Modifier.height(12.dp)
+                                    Modifier.height(14.dp)
                             )
 
                             Text(
                                 text =
                                     if (
-                                        searchText.isEmpty()
-                                    ) {
-                                        "No se encontraron canciones"
-                                    } else {
-                                        "No hay resultados"
-                                    },
+                                        showFavoritesOnly
+                                    )
+                                        "NO HAY FAVORITOS"
+                                    else
+                                        "NO SE ENCONTRARON CANCIONES",
 
                                 color =
                                     TextGray,
 
                                 fontSize =
-                                    13.sp
+                                    12.sp
                             )
                         }
                     }
@@ -1327,7 +1596,7 @@ private fun BlackWalkMusicScreen(
 
                         contentPadding =
                             PaddingValues(
-                                bottom = 10.dp
+                                bottom = 8.dp
                             )
                     ) {
 
@@ -1348,8 +1617,17 @@ private fun BlackWalkMusicScreen(
                                     currentSong?.id ==
                                         song.id,
 
+                                isFavorite =
+                                    favoriteIds.contains(
+                                        song.id
+                                    ),
+
                                 onClick = {
                                     onSongClick(song)
+                                },
+
+                                onFavorite = {
+                                    onFavorite(song)
                                 }
                             )
                         }
@@ -1357,7 +1635,7 @@ private fun BlackWalkMusicScreen(
                 }
 
                 /*
-                 * REPRODUCCIÓN
+                 * MINI PLAYER
                  */
 
                 if (
@@ -1371,6 +1649,11 @@ private fun BlackWalkMusicScreen(
                         isPlaying =
                             isPlaying,
 
+                        isFavorite =
+                            favoriteIds.contains(
+                                currentSong.id
+                            ),
+
                         onPlayPause =
                             onPlayPause,
 
@@ -1381,7 +1664,11 @@ private fun BlackWalkMusicScreen(
                             onPrevious,
 
                         onOpenPlayer =
-                            onOpenPlayer
+                            onOpenPlayer,
+
+                        onFavorite = {
+                            onFavorite(currentSong)
+                        }
                     )
                 }
             }
@@ -1389,43 +1676,28 @@ private fun BlackWalkMusicScreen(
     }
 }
 
-@Composable
-private fun SortItem(
-    text: String,
-    onClick: () -> Unit
-) {
-
-    DropdownMenuItem(
-        text = {
-            Text(
-                text = text,
-                color = TextWhite
-            )
-        },
-        onClick = onClick
-    )
-}
-
 /*
  * ============================================================
- * CANCIÓN
+ * SONG ITEM
  * ============================================================
  */
 
 @Composable
-private fun SongItem(
+fun SongItem(
     song: Song,
     isCurrent: Boolean,
-    onClick: () -> Unit
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    onFavorite: () -> Unit
 ) {
 
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(
-                    onClick = onClick
-                )
+                .clickable {
+                    onClick()
+                }
                 .padding(
                     vertical = 8.dp
                 ),
@@ -1435,13 +1707,16 @@ private fun SongItem(
     ) {
 
         AlbumArt(
-            song = song,
-            size = 56.dp
+            song =
+                song,
+
+            size =
+                56.dp
         )
 
         Spacer(
             modifier =
-                Modifier.width(14.dp)
+                Modifier.width(13.dp)
         )
 
         Column(
@@ -1455,7 +1730,7 @@ private fun SongItem(
 
                 color =
                     if (isCurrent)
-                        ParaguayBlue
+                        ParaguayWhite
                     else
                         TextWhite,
 
@@ -1506,6 +1781,29 @@ private fun SongItem(
             }
         }
 
+        IconButton(
+            onClick =
+                onFavorite
+        ) {
+
+            Icon(
+                imageVector =
+                    if (isFavorite)
+                        Icons.Default.Favorite
+                    else
+                        Icons.Default.FavoriteBorder,
+
+                contentDescription =
+                    "Favorito",
+
+                tint =
+                    if (isFavorite)
+                        ParaguayRed
+                    else
+                        TextGray
+            )
+        }
+
         if (
             isCurrent
         ) {
@@ -1513,10 +1811,10 @@ private fun SongItem(
             Box(
                 modifier =
                     Modifier
-                        .size(8.dp)
+                        .size(7.dp)
                         .clip(CircleShape)
                         .background(
-                            ParaguayBlue
+                            ParaguayWhite
                         )
             )
         }
@@ -1525,14 +1823,15 @@ private fun SongItem(
 
 /*
  * ============================================================
- * CARÁTULA
+ * ALBUM ART
  * ============================================================
  */
 
 @Composable
-private fun AlbumArt(
+fun AlbumArt(
     song: Song,
-    size: Dp
+    size: Dp,
+    modifier: Modifier = Modifier
 ) {
 
     val albumArtUri =
@@ -1540,13 +1839,18 @@ private fun AlbumArt(
 
     Box(
         modifier =
-            Modifier
+            modifier
                 .size(size)
                 .clip(
                     RoundedCornerShape(10.dp)
                 )
                 .background(
                     AmoledSurface2
+                )
+                .border(
+                    1.dp,
+                    BorderGray,
+                    RoundedCornerShape(10.dp)
                 ),
 
         contentAlignment =
@@ -1558,7 +1862,7 @@ private fun AlbumArt(
                 albumArtUri,
 
             contentDescription =
-                "Carátula",
+                "Carátula de ${song.album}",
 
             modifier =
                 Modifier.fillMaxSize(),
@@ -1569,14 +1873,16 @@ private fun AlbumArt(
             loading = {
 
                 GenericAlbumArt(
-                    size = size
+                    size =
+                        size
                 )
             },
 
             error = {
 
                 GenericAlbumArt(
-                    size = size
+                    size =
+                        size
                 )
             }
         )
@@ -1585,12 +1891,12 @@ private fun AlbumArt(
 
 /*
  * ============================================================
- * CARÁTULA GENÉRICA
+ * GENERIC ALBUM ART
  * ============================================================
  */
 
 @Composable
-private fun GenericAlbumArt(
+fun GenericAlbumArt(
     size: Dp
 ) {
 
@@ -1602,7 +1908,12 @@ private fun GenericAlbumArt(
                     RoundedCornerShape(10.dp)
                 )
                 .background(
-                    AmoledSurface2
+                    AmoledSurface
+                )
+                .border(
+                    1.dp,
+                    BorderGray,
+                    RoundedCornerShape(10.dp)
                 ),
 
         contentAlignment =
@@ -1617,11 +1928,11 @@ private fun GenericAlbumArt(
                 null,
 
             tint =
-                ParaguayBlue,
+                ParaguayWhite,
 
             modifier =
                 Modifier.size(
-                    size * 0.45f
+                    size * 0.42f
                 )
         )
     }
@@ -1634,185 +1945,235 @@ private fun GenericAlbumArt(
  */
 
 @Composable
-private fun MiniPlayer(
+fun MiniPlayer(
     song: Song,
     isPlaying: Boolean,
+    isFavorite: Boolean,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
-    onOpenPlayer: () -> Unit
+    onOpenPlayer: () -> Unit,
+    onFavorite: () -> Unit
 ) {
 
-    Column(
+    Surface(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(
-                    onClick =
-                        onOpenPlayer
-                )
+                .clickable {
+                    onOpenPlayer()
+                },
+
+        color =
+            AmoledSurface,
+
+        shape =
+            RoundedCornerShape(16.dp),
+
+        border =
+            androidx.compose.foundation.BorderStroke(
+                1.dp,
+                BorderGray
+            )
     ) {
 
-        SectionTitle(
-            title = "REPRODUCCIÓN"
-        )
-
-        Spacer(
+        Column(
             modifier =
-                Modifier.height(10.dp)
-        )
-
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .background(
-                        AmoledSurface,
-                        RoundedCornerShape(14.dp)
-                    )
-                    .padding(10.dp),
-
-            verticalAlignment =
-                Alignment.CenterVertically
+                Modifier.padding(9.dp)
         ) {
 
-            AlbumArt(
-                song = song,
-                size = 54.dp
-            )
-
-            Spacer(
-                modifier =
-                    Modifier.width(12.dp)
-            )
-
-            Column(
-                modifier =
-                    Modifier.weight(1f)
+            Row(
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
-                Text(
-                    text =
-                        song.title,
+                AlbumArt(
+                    song =
+                        song,
 
-                    color =
-                        TextWhite,
-
-                    fontWeight =
-                        FontWeight.Bold,
-
-                    maxLines =
-                        1
+                    size =
+                        52.dp
                 )
 
-                Text(
-                    text =
-                        song.artist,
-
-                    color =
-                        TextGray,
-
-                    fontSize =
-                        12.sp,
-
-                    maxLines =
-                        1
-                )
-            }
-
-            IconButton(
-                onClick = onPrevious
-            ) {
-
-                Icon(
-                    imageVector =
-                        Icons.Default.SkipPrevious,
-
-                    contentDescription =
-                        "Anterior",
-
-                    tint =
-                        TextWhite
-                )
-            }
-
-            IconButton(
-                onClick = onPlayPause
-            ) {
-
-                Icon(
-                    imageVector =
-                        if (isPlaying)
-                            Icons.Default.Pause
-                        else
-                            Icons.Default.PlayArrow,
-
-                    contentDescription =
-                        if (isPlaying)
-                            "Pausar"
-                        else
-                            "Reproducir",
-
-                    tint =
-                        ParaguayBlue,
-
+                Spacer(
                     modifier =
-                        Modifier.size(34.dp)
+                        Modifier.width(11.dp)
                 )
-            }
 
-            IconButton(
-                onClick = onNext
-            ) {
+                Column(
+                    modifier =
+                        Modifier.weight(1f)
+                ) {
+
+                    Text(
+                        text =
+                            song.title,
+
+                        color =
+                            TextWhite,
+
+                        fontWeight =
+                            FontWeight.Bold,
+
+                        maxLines =
+                            1
+                    )
+
+                    Text(
+                        text =
+                            song.artist,
+
+                        color =
+                            TextGray,
+
+                        fontSize =
+                            12.sp,
+
+                        maxLines =
+                            1
+                    )
+                }
+
+                IconButton(
+                    onClick =
+                        onFavorite
+                ) {
+
+                    Icon(
+                        imageVector =
+                            if (isFavorite)
+                                Icons.Default.Favorite
+                            else
+                                Icons.Default.FavoriteBorder,
+
+                        contentDescription =
+                            "Favorito",
+
+                        tint =
+                            if (isFavorite)
+                                ParaguayRed
+                            else
+                                TextGray
+                    )
+                }
 
                 Icon(
                     imageVector =
-                        Icons.Default.SkipNext,
+                        Icons.Default.ExpandLess,
 
                     contentDescription =
-                        "Siguiente",
+                        "Abrir reproductor",
 
                     tint =
                         TextWhite
                 )
             }
 
-            Icon(
-                imageVector =
-                    Icons.Default.ExpandLess,
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth(),
 
-                contentDescription =
-                    "Abrir reproductor",
+                horizontalArrangement =
+                    Arrangement.Center,
 
-                tint =
-                    TextGray
-            )
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
+
+                IconButton(
+                    onClick =
+                        onPrevious
+                ) {
+
+                    Icon(
+                        imageVector =
+                            Icons.Default.SkipPrevious,
+
+                        contentDescription =
+                            "Anterior",
+
+                        tint =
+                            TextWhite
+                    )
+                }
+
+                IconButton(
+                    onClick =
+                        onPlayPause
+                ) {
+
+                    Icon(
+                        imageVector =
+                            if (isPlaying)
+                                Icons.Default.Pause
+                            else
+                                Icons.Default.PlayArrow,
+
+                        contentDescription =
+                            if (isPlaying)
+                                "Pausar"
+                            else
+                                "Reproducir",
+
+                        tint =
+                            ParaguayWhite,
+
+                        modifier =
+                            Modifier.size(32.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick =
+                        onNext
+                ) {
+
+                    Icon(
+                        imageVector =
+                            Icons.Default.SkipNext,
+
+                        contentDescription =
+                            "Siguiente",
+
+                        tint =
+                            TextWhite
+                    )
+                }
+            }
         }
     }
 }
 
 /*
  * ============================================================
- * REPRODUCTOR COMPLETO
+ * REPRODUCTOR COMPLETO DESLIZABLE
  * ============================================================
  */
 
 @Composable
-private fun FullPlayerScreen(
+fun FullPlayerScreen(
     song: Song,
     isPlaying: Boolean,
     currentPosition: Long,
     duration: Long,
     repeatMode: Int,
     shuffleEnabled: Boolean,
+    isFavorite: Boolean,
+    queue: List<Song>,
     onBack: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
     onShuffle: () -> Unit,
-    onRepeat: () -> Unit
+    onRepeat: () -> Unit,
+    onFavorite: () -> Unit,
+    onQueueSongClick: (Song) -> Unit
 ) {
+
+    var showQueue by remember {
+        mutableStateOf(false)
+    }
 
     val safeDuration =
         duration.coerceAtLeast(1L)
@@ -1823,18 +2184,53 @@ private fun FullPlayerScreen(
             safeDuration
         )
 
-    MaterialTheme(
-        colorScheme =
-            AmoledColorScheme
+    /*
+     * Gestos verticales.
+     *
+     * Deslizar hacia arriba:
+     * abre reproducción actual.
+     *
+     * Deslizar hacia abajo:
+     * vuelve al reproductor.
+     */
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(
+                    AmoledBlack
+                )
+                .pointerInput(showQueue) {
+
+                    detectVerticalDragGestures(
+                        onVerticalDrag = { _, dragAmount ->
+
+                            if (
+                                dragAmount < -15f
+                            ) {
+
+                                showQueue = true
+                            }
+
+                            if (
+                                dragAmount > 15f
+                            ) {
+
+                                showQueue = false
+                            }
+                        }
+                    )
+                }
     ) {
 
-        Surface(
-            modifier =
-                Modifier.fillMaxSize(),
+        if (!showQueue) {
 
-            color =
-                AmoledBlack
-        ) {
+            /*
+             * =================================================
+             * VISTA PRINCIPAL DEL REPRODUCTOR
+             * =================================================
+             */
 
             Column(
                 modifier =
@@ -1842,7 +2238,7 @@ private fun FullPlayerScreen(
                         .fillMaxSize()
                         .padding(
                             horizontal = 22.dp,
-                            vertical = 18.dp
+                            vertical = 16.dp
                         )
             ) {
 
@@ -1873,27 +2269,48 @@ private fun FullPlayerScreen(
 
                     Text(
                         text =
-                            "REPRODUCCIÓN",
+                            "REPRODUCIENDO",
 
                         color =
-                            TextWhite,
+                            TextGray,
 
                         fontSize =
-                            16.sp,
+                            11.sp,
 
-                        fontWeight =
-                            FontWeight.Bold,
+                        letterSpacing =
+                            2.sp,
 
                         modifier =
                             Modifier.weight(1f)
                     )
-                }
 
-                ParaguayLine()
+                    IconButton(
+                        onClick =
+                            onFavorite
+                    ) {
+
+                        Icon(
+                            imageVector =
+                                if (isFavorite)
+                                    Icons.Default.Favorite
+                                else
+                                    Icons.Default.FavoriteBorder,
+
+                            contentDescription =
+                                "Favorito",
+
+                            tint =
+                                if (isFavorite)
+                                    ParaguayRed
+                                else
+                                    TextWhite
+                        )
+                    }
+                }
 
                 Spacer(
                     modifier =
-                        Modifier.height(35.dp)
+                        Modifier.height(12.dp)
                 )
 
                 AlbumArt(
@@ -1901,12 +2318,17 @@ private fun FullPlayerScreen(
                         song,
 
                     size =
-                        290.dp
+                        300.dp,
+
+                    modifier =
+                        Modifier.align(
+                            Alignment.CenterHorizontally
+                        )
                 )
 
                 Spacer(
                     modifier =
-                        Modifier.height(28.dp)
+                        Modifier.height(25.dp)
                 )
 
                 Text(
@@ -1936,7 +2358,7 @@ private fun FullPlayerScreen(
                         song.artist,
 
                     color =
-                        ParaguayBlue,
+                        TextGray,
 
                     fontSize =
                         16.sp,
@@ -1954,7 +2376,7 @@ private fun FullPlayerScreen(
                             song.album,
 
                         color =
-                            TextGray,
+                            TextGrayDark,
 
                         fontSize =
                             13.sp,
@@ -1966,7 +2388,7 @@ private fun FullPlayerScreen(
 
                 Spacer(
                     modifier =
-                        Modifier.height(20.dp)
+                        Modifier.height(18.dp)
                 )
 
                 Slider(
@@ -1974,6 +2396,7 @@ private fun FullPlayerScreen(
                         safePosition.toFloat(),
 
                     onValueChange = {
+
                         onSeek(
                             it.toLong()
                         )
@@ -1987,14 +2410,15 @@ private fun FullPlayerScreen(
 
                     colors =
                         SliderDefaults.colors(
+
                             thumbColor =
-                                ParaguayBlue,
+                                ParaguayWhite,
 
                             activeTrackColor =
-                                ParaguayBlue,
+                                ParaguayWhite,
 
                             inactiveTrackColor =
-                                SectionLineGray
+                                BorderGray
                         )
                 )
 
@@ -2016,7 +2440,7 @@ private fun FullPlayerScreen(
                             TextGray,
 
                         fontSize =
-                            12.sp
+                            11.sp
                     )
 
                     Text(
@@ -2029,13 +2453,13 @@ private fun FullPlayerScreen(
                             TextGray,
 
                         fontSize =
-                            12.sp
+                            11.sp
                     )
                 }
 
                 Spacer(
                     modifier =
-                        Modifier.height(24.dp)
+                        Modifier.height(15.dp)
                 )
 
                 Row(
@@ -2063,7 +2487,7 @@ private fun FullPlayerScreen(
 
                             tint =
                                 if (shuffleEnabled)
-                                    ParaguayBlue
+                                    TextWhite
                                 else
                                     TextGray
                         )
@@ -2116,7 +2540,7 @@ private fun FullPlayerScreen(
                                     "Reproducir",
 
                             tint =
-                                AmoledBlack,
+                                Color.Black,
 
                             modifier =
                                 Modifier.size(38.dp)
@@ -2160,14 +2584,14 @@ private fun FullPlayerScreen(
                                 },
 
                             contentDescription =
-                                "Repetir",
+                                "Repetición",
 
                             tint =
                                 if (
                                     repeatMode !=
                                     Player.REPEAT_MODE_OFF
                                 )
-                                    ParaguayBlue
+                                    TextWhite
                                 else
                                     TextGray
                         )
@@ -2176,12 +2600,357 @@ private fun FullPlayerScreen(
 
                 Spacer(
                     modifier =
-                        Modifier.height(25.dp)
+                        Modifier.weight(1f)
+                )
+
+                /*
+                 * INDICADOR DE DESLIZAMIENTO
+                 */
+
+                Text(
+                    text =
+                        "↑ DESLIZA PARA VER LA REPRODUCCIÓN ACTUAL ↑",
+
+                    color =
+                        TextGray,
+
+                    fontSize =
+                        10.sp,
+
+                    letterSpacing =
+                        1.sp,
+
+                    modifier =
+                        Modifier.align(
+                            Alignment.CenterHorizontally
+                        )
+                )
+
+                Spacer(
+                    modifier =
+                        Modifier.height(10.dp)
                 )
 
                 TerereBrand(
                     modifier =
                         Modifier.fillMaxWidth()
+                )
+            }
+
+        } else {
+
+            /*
+             * =================================================
+             * REPRODUCCIÓN ACTUAL
+             * =================================================
+             */
+
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(
+                            horizontal = 18.dp,
+                            vertical = 16.dp
+                        )
+            ) {
+
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
+                    verticalAlignment =
+                        Alignment.CenterVertically
+                ) {
+
+                    IconButton(
+                        onClick = {
+                            showQueue = false
+                        }
+                    ) {
+
+                        Icon(
+                            imageVector =
+                                Icons.Default.ExpandLess,
+
+                            contentDescription =
+                                "Volver al reproductor",
+
+                            tint =
+                                TextWhite
+                        )
+                    }
+
+                    Column(
+                        modifier =
+                            Modifier.weight(1f)
+                    ) {
+
+                        Text(
+                            text =
+                                "REPRODUCCIÓN ACTUAL",
+
+                            color =
+                                TextWhite,
+
+                            fontSize =
+                                20.sp,
+
+                            fontWeight =
+                                FontWeight.Bold,
+
+                            letterSpacing =
+                                1.sp
+                        )
+
+                        Text(
+                            text =
+                                "${queue.size} canciones",
+
+                            color =
+                                TextGray,
+
+                            fontSize =
+                                12.sp
+                        )
+                    }
+                }
+
+                Spacer(
+                    modifier =
+                        Modifier.height(10.dp)
+                )
+
+                /*
+                 * INDICADOR
+                 */
+
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = 8.dp
+                            )
+                ) {
+
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .height(2.dp)
+                                .background(
+                                    ParaguayRed
+                                )
+                    )
+
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .height(2.dp)
+                                .background(
+                                    ParaguayWhite
+                                )
+                    )
+
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .height(2.dp)
+                                .background(
+                                    ParaguayBlue
+                                )
+                    )
+                }
+
+                Spacer(
+                    modifier =
+                        Modifier.height(12.dp)
+                )
+
+                if (
+                    queue.isEmpty()
+                ) {
+
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+
+                        contentAlignment =
+                            Alignment.Center
+                    ) {
+
+                        Text(
+                            text =
+                                "NO HAY REPRODUCCIÓN ACTUAL",
+
+                            color =
+                                TextGray,
+
+                            fontSize =
+                                12.sp
+                        )
+                    }
+
+                } else {
+
+                    LazyColumn(
+                        modifier =
+                            Modifier.weight(1f),
+
+                        contentPadding =
+                            PaddingValues(
+                                bottom = 20.dp
+                            )
+                    ) {
+
+                        items(
+                            items =
+                                queue,
+
+                            key = {
+                                it.id
+                            }
+                        ) { queueSong ->
+
+                            val isCurrent =
+                                queueSong.id ==
+                                    song.id
+
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+
+                                            onQueueSongClick(
+                                                queueSong
+                                            )
+                                        }
+                                        .padding(
+                                            vertical = 9.dp
+                                        ),
+
+                                verticalAlignment =
+                                    Alignment.CenterVertically
+                            ) {
+
+                                AlbumArt(
+                                    song =
+                                        queueSong,
+
+                                    size =
+                                        55.dp
+                                )
+
+                                Spacer(
+                                    modifier =
+                                        Modifier.width(12.dp)
+                                )
+
+                                Column(
+                                    modifier =
+                                        Modifier.weight(1f)
+                                ) {
+
+                                    Text(
+                                        text =
+                                            queueSong.title,
+
+                                        color =
+                                            if (isCurrent)
+                                                TextWhite
+                                            else
+                                                TextGray,
+
+                                        fontSize =
+                                            15.sp,
+
+                                        fontWeight =
+                                            if (isCurrent)
+                                                FontWeight.Bold
+                                            else
+                                                FontWeight.Normal,
+
+                                        maxLines =
+                                            2
+                                    )
+
+                                    Text(
+                                        text =
+                                            queueSong.artist,
+
+                                        color =
+                                            TextGrayDark,
+
+                                        fontSize =
+                                            12.sp,
+
+                                        maxLines =
+                                            1
+                                    )
+                                }
+
+                                if (
+                                    isCurrent
+                                ) {
+
+                                    Text(
+                                        text =
+                                            "▶",
+
+                                        color =
+                                            TextWhite,
+
+                                        fontSize =
+                                            14.sp,
+
+                                        modifier =
+                                            Modifier.padding(
+                                                end = 8.dp
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Text(
+                    text =
+                        "↓ DESLIZA HACIA ABAJO PARA VOLVER",
+
+                    color =
+                        TextGray,
+
+                    fontSize =
+                        10.sp,
+
+                    letterSpacing =
+                        1.sp,
+
+                    modifier =
+                        Modifier.align(
+                            Alignment.CenterHorizontally
+                        )
+                )
+
+                Spacer(
+                    modifier =
+                        Modifier.height(8.dp)
+                )
+
+                TerereBrand(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = 35.dp
+                            )
                 )
             }
         }
@@ -2190,7 +2959,7 @@ private fun FullPlayerScreen(
 
 /*
  * ============================================================
- * FORMATO DE TIEMPO
+ * TIME FORMAT
  * ============================================================
  */
 
