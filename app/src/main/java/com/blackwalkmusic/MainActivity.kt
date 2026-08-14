@@ -42,7 +42,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.delay
 
@@ -81,7 +81,9 @@ class MainActivity : ComponentActivity() {
 
     private var duration by mutableLongStateOf(0L)
 
-    private var repeatMode by mutableIntStateOf(Player.REPEAT_MODE_OFF)
+    private var repeatMode by mutableIntStateOf(
+        Player.REPEAT_MODE_OFF
+    )
 
     private var shuffleEnabled by mutableStateOf(false)
 
@@ -143,8 +145,11 @@ class MainActivity : ComponentActivity() {
                 isPlaying,
                 currentSong
             ) {
+
                 while (true) {
+
                     updateProgress()
+
                     delay(500)
                 }
             }
@@ -179,8 +184,13 @@ class MainActivity : ComponentActivity() {
                     },
 
                     onSeek = { position ->
-                        controller?.seekTo(position)
-                        currentPosition = position
+
+                        controller?.seekTo(
+                            position
+                        )
+
+                        currentPosition =
+                            position
                     },
 
                     onShuffle = {
@@ -220,7 +230,11 @@ class MainActivity : ComponentActivity() {
                     },
 
                     onOpenPlayer = {
-                        if (currentSong != null) {
+
+                        if (
+                            currentSong != null
+                        ) {
+
                             showFullPlayer = true
                         }
                     }
@@ -229,6 +243,7 @@ class MainActivity : ComponentActivity() {
         }
 
         requestMusicPermission()
+
         connectToMusicService()
     }
 
@@ -251,6 +266,7 @@ class MainActivity : ComponentActivity() {
 
         controllerFuture.addListener(
             {
+
                 controller =
                     controllerFuture.get()
 
@@ -269,7 +285,9 @@ class MainActivity : ComponentActivity() {
                     controller?.shuffleModeEnabled == true
 
                 updateCurrentSong()
+
                 updateProgress()
+
             },
             ContextCompat.getMainExecutor(this)
         )
@@ -287,12 +305,15 @@ class MainActivity : ComponentActivity() {
             index >= 0 &&
             index < songs.size
         ) {
+
             currentSong =
                 songs[index]
+
         } else {
 
             val uri =
-                mediaController.currentMediaItem
+                mediaController
+                    .currentMediaItem
                     ?.localConfiguration
                     ?.uri
                     ?.toString()
@@ -332,13 +353,17 @@ class MainActivity : ComponentActivity() {
         val mediaController =
             controller ?: return
 
-        if (songs.isEmpty()) {
+        if (
+            songs.isEmpty()
+        ) {
             return
         }
 
         val mediaItems =
             songs.map {
-                MediaItem.fromUri(it.uri)
+                MediaItem.fromUri(
+                    it.uri
+                )
             }
 
         val startIndex =
@@ -353,9 +378,12 @@ class MainActivity : ComponentActivity() {
         )
 
         mediaController.prepare()
+
         mediaController.play()
 
-        currentSong = song
+        currentSong =
+            song
+
         isPlaying = true
     }
 
@@ -364,9 +392,14 @@ class MainActivity : ComponentActivity() {
         val mediaController =
             controller ?: return
 
-        if (mediaController.isPlaying) {
+        if (
+            mediaController.isPlaying
+        ) {
+
             mediaController.pause()
+
         } else {
+
             mediaController.play()
         }
     }
@@ -379,13 +412,18 @@ class MainActivity : ComponentActivity() {
         if (
             mediaController.hasNextMediaItem()
         ) {
+
             mediaController.seekToNextMediaItem()
+
             mediaController.play()
+
         } else if (
             mediaController.repeatMode ==
             Player.REPEAT_MODE_ALL
         ) {
+
             mediaController.seekToNextMediaItem()
+
             mediaController.play()
         }
     }
@@ -396,16 +434,22 @@ class MainActivity : ComponentActivity() {
             controller ?: return
 
         if (
-            mediaController.currentPosition > 3000L
+            mediaController.currentPosition >
+            3000L
         ) {
+
             mediaController.seekTo(0L)
+
             return
         }
 
         if (
             mediaController.hasPreviousMediaItem()
         ) {
-            mediaController.seekToPreviousMediaItem()
+
+            mediaController
+                .seekToPreviousMediaItem()
+
             mediaController.play()
         }
     }
@@ -415,7 +459,9 @@ class MainActivity : ComponentActivity() {
         val mediaController =
             controller ?: return
 
-        if (songs.isEmpty()) {
+        if (
+            songs.isEmpty()
+        ) {
             return
         }
 
@@ -424,7 +470,9 @@ class MainActivity : ComponentActivity() {
 
         val mediaItems =
             shuffledSongs.map {
-                MediaItem.fromUri(it.uri)
+                MediaItem.fromUri(
+                    it.uri
+                )
             }
 
         mediaController.setMediaItems(
@@ -437,12 +485,14 @@ class MainActivity : ComponentActivity() {
             true
 
         mediaController.prepare()
+
         mediaController.play()
 
         currentSong =
             shuffledSongs.firstOrNull()
 
         isPlaying = true
+
         shuffleEnabled = true
     }
 
@@ -528,6 +578,7 @@ class MainActivity : ComponentActivity() {
         if (
             ::controllerFuture.isInitialized
         ) {
+
             MediaController.releaseFuture(
                 controllerFuture
             )
@@ -584,7 +635,9 @@ fun TerereBrand(
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .background(ParaguayRed)
+                        .background(
+                            ParaguayRed
+                        )
             )
 
             Box(
@@ -592,7 +645,9 @@ fun TerereBrand(
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .background(ParaguayWhite)
+                        .background(
+                            ParaguayWhite
+                        )
             )
 
             Box(
@@ -600,7 +655,9 @@ fun TerereBrand(
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .background(ParaguayBlue)
+                        .background(
+                            ParaguayBlue
+                        )
             )
         }
     }
@@ -644,8 +701,12 @@ fun BlackWalkMusicScreen(
                 searchText.trim()
 
             val filtered =
-                if (query.isEmpty()) {
+                if (
+                    query.isEmpty()
+                ) {
+
                     songs
+
                 } else {
 
                     songs.filter { song ->
@@ -704,16 +765,23 @@ fun BlackWalkMusicScreen(
     MaterialTheme(
         colorScheme =
             darkColorScheme(
-                background = CyberBlack,
-                surface = CyberSurface,
-                primary = ParaguayWhite
+                background =
+                    CyberBlack,
+
+                surface =
+                    CyberSurface,
+
+                primary =
+                    ParaguayWhite
             )
     ) {
 
         Surface(
             modifier =
                 Modifier.fillMaxSize(),
-            color = CyberBlack
+
+            color =
+                CyberBlack
         ) {
 
             Column(
@@ -729,6 +797,7 @@ fun BlackWalkMusicScreen(
                 Row(
                     modifier =
                         Modifier.fillMaxWidth(),
+
                     verticalAlignment =
                         Alignment.CenterVertically
                 ) {
@@ -739,14 +808,17 @@ fun BlackWalkMusicScreen(
                     )
 
                     IconButton(
-                        onClick = onShuffle
+                        onClick =
+                            onShuffle
                     ) {
 
                         Icon(
                             imageVector =
                                 Icons.Default.Shuffle,
+
                             contentDescription =
                                 "Aleatorio",
+
                             tint =
                                 ParaguayWhite
                         )
@@ -759,12 +831,16 @@ fun BlackWalkMusicScreen(
                 )
 
                 OutlinedTextField(
-                    value = searchText,
+                    value =
+                        searchText,
+
                     onValueChange = {
                         searchText = it
                     },
+
                     modifier =
                         Modifier.fillMaxWidth(),
+
                     singleLine = true,
 
                     leadingIcon = {
@@ -772,8 +848,12 @@ fun BlackWalkMusicScreen(
                         Icon(
                             imageVector =
                                 Icons.Default.Search,
-                            contentDescription = null,
-                            tint = CyberGray
+
+                            contentDescription =
+                                null,
+
+                            tint =
+                                CyberGray
                         )
                     },
 
@@ -792,8 +872,10 @@ fun BlackWalkMusicScreen(
                                 Icon(
                                     imageVector =
                                         Icons.Default.Clear,
+
                                     contentDescription =
                                         "Limpiar",
+
                                     tint =
                                         ParaguayWhite
                                 )
@@ -806,6 +888,7 @@ fun BlackWalkMusicScreen(
                         Text(
                             text =
                                 "Buscar canción, artista o álbum",
+
                             color =
                                 Color(0xFF666666)
                         )
@@ -826,6 +909,18 @@ fun BlackWalkMusicScreen(
                             unfocusedBorderColor =
                                 CyberBorder,
 
+                            focusedLeadingIconColor =
+                                CyberGray,
+
+                            unfocusedLeadingIconColor =
+                                CyberGray,
+
+                            focusedTrailingIconColor =
+                                ParaguayWhite,
+
+                            unfocusedTrailingIconColor =
+                                CyberGray,
+
                             cursorColor =
                                 ParaguayRed
                         ),
@@ -842,6 +937,7 @@ fun BlackWalkMusicScreen(
                 Row(
                     modifier =
                         Modifier.fillMaxWidth(),
+
                     verticalAlignment =
                         Alignment.CenterVertically
                 ) {
@@ -852,22 +948,40 @@ fun BlackWalkMusicScreen(
                     ) {
 
                         Text(
-                            text = "BIBLIOTECA",
-                            color = ParaguayWhite,
-                            fontSize = 23.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
+                            text =
+                                "BIBLIOTECA",
+
+                            color =
+                                ParaguayWhite,
+
+                            fontSize =
+                                23.sp,
+
+                            fontWeight =
+                                FontWeight.Bold,
+
+                            letterSpacing =
+                                1.sp
                         )
 
                         Text(
                             text =
-                                if (searchText.isEmpty()) {
+                                if (
+                                    searchText.isEmpty()
+                                ) {
+
                                     "${songs.size} canciones"
+
                                 } else {
+
                                     "${filteredSongs.size} resultados"
                                 },
-                            color = CyberGray,
-                            fontSize = 13.sp
+
+                            color =
+                                CyberGray,
+
+                            fontSize =
+                                13.sp
                         )
                     }
 
@@ -875,6 +989,7 @@ fun BlackWalkMusicScreen(
 
                         IconButton(
                             onClick = {
+
                                 showSortMenu =
                                     !showSortMenu
                             }
@@ -883,8 +998,10 @@ fun BlackWalkMusicScreen(
                             Icon(
                                 imageVector =
                                     Icons.Default.Sort,
+
                                 contentDescription =
                                     "Ordenar",
+
                                 tint =
                                     ParaguayWhite
                             )
@@ -893,30 +1010,45 @@ fun BlackWalkMusicScreen(
                         DropdownMenu(
                             expanded =
                                 showSortMenu,
+
                             onDismissRequest = {
-                                showSortMenu = false
+
+                                showSortMenu =
+                                    false
                             }
                         ) {
 
                             DropdownMenuItem(
                                 text = {
-                                    Text("Más recientes")
+                                    Text(
+                                        "Más recientes"
+                                    )
                                 },
+
                                 onClick = {
+
                                     sortMode =
                                         SongSort.NEWEST
-                                    showSortMenu = false
+
+                                    showSortMenu =
+                                        false
                                 }
                             )
 
                             DropdownMenuItem(
                                 text = {
-                                    Text("Más antiguas")
+                                    Text(
+                                        "Más antiguas"
+                                    )
                                 },
+
                                 onClick = {
+
                                     sortMode =
                                         SongSort.OLDEST
-                                    showSortMenu = false
+
+                                    showSortMenu =
+                                        false
                                 }
                             )
 
@@ -926,10 +1058,14 @@ fun BlackWalkMusicScreen(
                                 text = {
                                     Text("Título")
                                 },
+
                                 onClick = {
+
                                     sortMode =
                                         SongSort.TITLE
-                                    showSortMenu = false
+
+                                    showSortMenu =
+                                        false
                                 }
                             )
 
@@ -937,10 +1073,14 @@ fun BlackWalkMusicScreen(
                                 text = {
                                     Text("Artista")
                                 },
+
                                 onClick = {
+
                                     sortMode =
                                         SongSort.ARTIST
-                                    showSortMenu = false
+
+                                    showSortMenu =
+                                        false
                                 }
                             )
 
@@ -948,10 +1088,14 @@ fun BlackWalkMusicScreen(
                                 text = {
                                     Text("Álbum")
                                 },
+
                                 onClick = {
+
                                     sortMode =
                                         SongSort.ALBUM
-                                    showSortMenu = false
+
+                                    showSortMenu =
+                                        false
                                 }
                             )
 
@@ -959,10 +1103,14 @@ fun BlackWalkMusicScreen(
                                 text = {
                                     Text("Duración")
                                 },
+
                                 onClick = {
+
                                     sortMode =
                                         SongSort.DURATION
-                                    showSortMenu = false
+
+                                    showSortMenu =
+                                        false
                                 }
                             )
                         }
@@ -983,6 +1131,7 @@ fun BlackWalkMusicScreen(
                             Modifier
                                 .weight(1f)
                                 .fillMaxWidth(),
+
                         contentAlignment =
                             Alignment.Center
                     ) {
@@ -1006,10 +1155,14 @@ fun BlackWalkMusicScreen(
                                     if (
                                         searchText.isEmpty()
                                     ) {
+
                                         "No se encontraron canciones"
+
                                     } else {
+
                                         "No hay resultados"
                                     },
+
                                 color =
                                     CyberGray
                             )
@@ -1024,19 +1177,26 @@ fun BlackWalkMusicScreen(
                     ) {
 
                         items(
-                            items = filteredSongs,
+                            items =
+                                filteredSongs,
+
                             key = {
                                 it.id
                             }
                         ) { song ->
 
                             SongItem(
-                                song = song,
+                                song =
+                                    song,
+
                                 isCurrent =
                                     currentSong?.id ==
                                         song.id,
+
                                 onClick = {
-                                    onSongClick(song)
+                                    onSongClick(
+                                        song
+                                    )
                                 }
                             )
                         }
@@ -1048,12 +1208,23 @@ fun BlackWalkMusicScreen(
                 ) {
 
                     MiniPlayer(
-                        song = currentSong,
-                        isPlaying = isPlaying,
-                        onPlayPause = onPlayPause,
-                        onNext = onNext,
-                        onPrevious = onPrevious,
-                        onOpenPlayer = onOpenPlayer
+                        song =
+                            currentSong,
+
+                        isPlaying =
+                            isPlaying,
+
+                        onPlayPause =
+                            onPlayPause,
+
+                        onNext =
+                            onNext,
+
+                        onPrevious =
+                            onPrevious,
+
+                        onOpenPlayer =
+                            onOpenPlayer
                     )
                 }
             }
@@ -1084,8 +1255,11 @@ fun SongItem(
     ) {
 
         AlbumArt(
-            song = song,
-            size = 58.dp
+            song =
+                song,
+
+            size =
+                58.dp
         )
 
         Spacer(
@@ -1099,26 +1273,40 @@ fun SongItem(
         ) {
 
             Text(
-                text = song.title,
+                text =
+                    song.title,
+
                 color =
                     if (isCurrent)
                         ParaguayWhite
                     else
                         Color(0xFFE5E5E5),
-                fontSize = 16.sp,
+
+                fontSize =
+                    16.sp,
+
                 fontWeight =
                     if (isCurrent)
                         FontWeight.Bold
                     else
                         FontWeight.Normal,
-                maxLines = 2
+
+                maxLines =
+                    2
             )
 
             Text(
-                text = song.artist,
-                color = CyberGray,
-                fontSize = 13.sp,
-                maxLines = 1
+                text =
+                    song.artist,
+
+                color =
+                    CyberGray,
+
+                fontSize =
+                    13.sp,
+
+                maxLines =
+                    1
             )
 
             if (
@@ -1126,22 +1314,33 @@ fun SongItem(
             ) {
 
                 Text(
-                    text = song.album,
-                    color = Color(0xFF555555),
-                    fontSize = 11.sp,
-                    maxLines = 1
+                    text =
+                        song.album,
+
+                    color =
+                        Color(0xFF555555),
+
+                    fontSize =
+                        11.sp,
+
+                    maxLines =
+                        1
                 )
             }
         }
 
-        if (isCurrent) {
+        if (
+            isCurrent
+        ) {
 
             Box(
                 modifier =
                     Modifier
                         .size(7.dp)
                         .clip(CircleShape)
-                        .background(ParaguayRed)
+                        .background(
+                            ParaguayRed
+                        )
             )
         }
     }
@@ -1164,24 +1363,40 @@ fun AlbumArt(
                 .clip(
                     RoundedCornerShape(10.dp)
                 )
-                .background(CyberSurface2),
+                .background(
+                    CyberSurface2
+                ),
 
         contentAlignment =
             Alignment.Center
     ) {
 
-        AsyncImage(
-            model = albumArtUri,
+        SubcomposeAsyncImage(
+            model =
+                albumArtUri,
+
             contentDescription =
                 "Carátula de ${song.album}",
+
             modifier =
                 Modifier.fillMaxSize(),
+
             contentScale =
                 ContentScale.Crop,
 
-            error = {
+            loading = {
+
                 GenericAlbumArt(
-                    size = size
+                    size =
+                        size
+                )
+            },
+
+            error = {
+
+                GenericAlbumArt(
+                    size =
+                        size
                 )
             }
         )
@@ -1216,9 +1431,13 @@ fun GenericAlbumArt(
             Icon(
                 imageVector =
                     Icons.Default.MusicNote,
-                contentDescription = null,
+
+                contentDescription =
+                    null,
+
                 tint =
                     ParaguayRed,
+
                 modifier =
                     Modifier.size(
                         size * 0.42f
@@ -1226,14 +1445,20 @@ fun GenericAlbumArt(
             )
 
             Text(
-                text = "T•PY",
+                text =
+                    "T•PY",
+
                 color =
                     ParaguayWhite,
+
                 fontSize =
                     (size.value * 0.11f).sp,
+
                 fontWeight =
                     FontWeight.Bold,
-                letterSpacing = 1.sp
+
+                letterSpacing =
+                    1.sp
             )
         }
     }
@@ -1264,7 +1489,8 @@ fun MiniPlayer(
             RoundedCornerShape(18.dp),
 
         border =
-            ButtonDefaults.outlinedButtonBorder
+            ButtonDefaults
+                .outlinedButtonBorder
     ) {
 
         Column(
@@ -1278,8 +1504,11 @@ fun MiniPlayer(
             ) {
 
                 AlbumArt(
-                    song = song,
-                    size = 55.dp
+                    song =
+                        song,
+
+                    size =
+                        55.dp
                 )
 
                 Spacer(
@@ -1293,25 +1522,41 @@ fun MiniPlayer(
                 ) {
 
                     Text(
-                        text = song.title,
-                        color = ParaguayWhite,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
+                        text =
+                            song.title,
+
+                        color =
+                            ParaguayWhite,
+
+                        fontWeight =
+                            FontWeight.Bold,
+
+                        maxLines =
+                            1
                     )
 
                     Text(
-                        text = song.artist,
-                        color = CyberGray,
-                        fontSize = 12.sp,
-                        maxLines = 1
+                        text =
+                            song.artist,
+
+                        color =
+                            CyberGray,
+
+                        fontSize =
+                            12.sp,
+
+                        maxLines =
+                            1
                     )
                 }
 
                 Icon(
                     imageVector =
                         Icons.Default.ExpandLess,
+
                     contentDescription =
                         "Abrir reproductor",
+
                     tint =
                         CyberGray
                 )
@@ -1325,28 +1570,34 @@ fun MiniPlayer(
             Row(
                 modifier =
                     Modifier.fillMaxWidth(),
+
                 horizontalArrangement =
                     Arrangement.Center,
+
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
 
                 IconButton(
-                    onClick = onPrevious
+                    onClick =
+                        onPrevious
                 ) {
 
                     Icon(
                         imageVector =
                             Icons.Default.SkipPrevious,
+
                         contentDescription =
                             "Anterior",
+
                         tint =
                             ParaguayWhite
                     )
                 }
 
                 IconButton(
-                    onClick = onPlayPause
+                    onClick =
+                        onPlayPause
                 ) {
 
                     Icon(
@@ -1371,14 +1622,17 @@ fun MiniPlayer(
                 }
 
                 IconButton(
-                    onClick = onNext
+                    onClick =
+                        onNext
                 ) {
 
                     Icon(
                         imageVector =
                             Icons.Default.SkipNext,
+
                         contentDescription =
                             "Siguiente",
+
                         tint =
                             ParaguayWhite
                     )
@@ -1430,19 +1684,23 @@ fun FullPlayerScreen(
         Row(
             modifier =
                 Modifier.fillMaxWidth(),
+
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
 
             IconButton(
-                onClick = onBack
+                onClick =
+                    onBack
             ) {
 
                 Icon(
                     imageVector =
                         Icons.Default.ArrowBack,
+
                     contentDescription =
                         "Volver",
+
                     tint =
                         ParaguayWhite
                 )
@@ -1451,12 +1709,16 @@ fun FullPlayerScreen(
             Text(
                 text =
                     "TERERÉ // NOW PLAYING",
+
                 color =
                     CyberGray,
+
                 fontSize =
                     11.sp,
+
                 letterSpacing =
                     2.sp,
+
                 modifier =
                     Modifier.weight(1f)
             )
@@ -1468,8 +1730,12 @@ fun FullPlayerScreen(
         )
 
         AlbumArt(
-            song = song,
-            size = 310.dp,
+            song =
+                song,
+
+            size =
+                310.dp,
+
             modifier =
                 Modifier.align(
                     Alignment.CenterHorizontally
@@ -1484,13 +1750,18 @@ fun FullPlayerScreen(
         Text(
             text =
                 song.title,
+
             color =
                 ParaguayWhite,
+
             fontSize =
                 25.sp,
+
             fontWeight =
                 FontWeight.Bold,
-            maxLines = 2
+
+            maxLines =
+                2
         )
 
         Spacer(
@@ -1501,11 +1772,15 @@ fun FullPlayerScreen(
         Text(
             text =
                 song.artist,
+
             color =
                 CyberGray,
+
             fontSize =
                 16.sp,
-            maxLines = 1
+
+            maxLines =
+                1
         )
 
         if (
@@ -1515,11 +1790,15 @@ fun FullPlayerScreen(
             Text(
                 text =
                     song.album,
+
                 color =
                     Color(0xFF555555),
+
                 fontSize =
                     13.sp,
-                maxLines = 1
+
+                maxLines =
+                    1
             )
         }
 
@@ -1546,6 +1825,7 @@ fun FullPlayerScreen(
 
             colors =
                 SliderDefaults.colors(
+
                     thumbColor =
                         ParaguayRed,
 
@@ -1560,6 +1840,7 @@ fun FullPlayerScreen(
         Row(
             modifier =
                 Modifier.fillMaxWidth(),
+
             horizontalArrangement =
                 Arrangement.SpaceBetween
         ) {
@@ -1569,8 +1850,10 @@ fun FullPlayerScreen(
                     formatTime(
                         safePosition
                     ),
+
                 color =
                     CyberGray,
+
                 fontSize =
                     12.sp
             )
@@ -1580,8 +1863,10 @@ fun FullPlayerScreen(
                     formatTime(
                         safeDuration
                     ),
+
                 color =
                     CyberGray,
+
                 fontSize =
                     12.sp
             )
@@ -1595,21 +1880,26 @@ fun FullPlayerScreen(
         Row(
             modifier =
                 Modifier.fillMaxWidth(),
+
             horizontalArrangement =
                 Arrangement.SpaceEvenly,
+
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
 
             IconButton(
-                onClick = onShuffle
+                onClick =
+                    onShuffle
             ) {
 
                 Icon(
                     imageVector =
                         Icons.Default.Shuffle,
+
                     contentDescription =
                         "Aleatorio",
+
                     tint =
                         if (shuffleEnabled)
                             ParaguayRed
@@ -1619,23 +1909,28 @@ fun FullPlayerScreen(
             }
 
             IconButton(
-                onClick = onPrevious
+                onClick =
+                    onPrevious
             ) {
 
                 Icon(
                     imageVector =
                         Icons.Default.SkipPrevious,
+
                     contentDescription =
                         "Anterior",
+
                     tint =
                         ParaguayWhite,
+
                     modifier =
                         Modifier.size(38.dp)
                 )
             }
 
             IconButton(
-                onClick = onPlayPause,
+                onClick =
+                    onPlayPause,
 
                 modifier =
                     Modifier
@@ -1668,23 +1963,28 @@ fun FullPlayerScreen(
             }
 
             IconButton(
-                onClick = onNext
+                onClick =
+                    onNext
             ) {
 
                 Icon(
                     imageVector =
                         Icons.Default.SkipNext,
+
                     contentDescription =
                         "Siguiente",
+
                     tint =
                         ParaguayWhite,
+
                     modifier =
                         Modifier.size(38.dp)
                 )
             }
 
             IconButton(
-                onClick = onRepeat
+                onClick =
+                    onRepeat
             ) {
 
                 Icon(
@@ -1704,7 +2004,7 @@ fun FullPlayerScreen(
                     tint =
                         if (
                             repeatMode !=
-                            Player.REPEAT_MODE_OFF
+                                Player.REPEAT_MODE_OFF
                         )
                             ParaguayRed
                         else
