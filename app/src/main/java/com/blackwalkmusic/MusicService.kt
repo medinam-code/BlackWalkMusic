@@ -14,27 +14,30 @@ class MusicService : MediaSessionService() {
 
         val player = MusicPlayer.getPlayer(this)
 
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags =
+        val sessionIntent = Intent(
+            this,
+            MainActivity::class.java
+        ).apply {
+            addFlags(
                 Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+            )
         }
 
         val sessionActivity = PendingIntent.getActivity(
             this,
             0,
-            intent,
+            sessionIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or
                 PendingIntent.FLAG_IMMUTABLE
         )
 
-        mediaSession =
-            MediaSession.Builder(
-                this,
-                player
-            )
-                .setSessionActivity(sessionActivity)
-                .build()
+        mediaSession = MediaSession.Builder(
+            this,
+            player
+        )
+            .setSessionActivity(sessionActivity)
+            .build()
     }
 
     override fun onGetSession(
@@ -44,7 +47,6 @@ class MusicService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-
         mediaSession?.release()
         mediaSession = null
 
