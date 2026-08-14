@@ -128,21 +128,31 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun playSong(song: Song) {
+    val mediaController = controller ?: return
 
-        val mediaController = controller ?: return
-
-        val mediaItem =
-            MediaItem.fromUri(song.uri)
-
-        mediaController.setMediaItem(mediaItem)
-
-        mediaController.prepare()
-
-        mediaController.play()
-
-        currentSong = song
-        isPlaying = true
+    // Crear la cola con todas las canciones de la biblioteca
+    val mediaItems = songs.map { currentSong ->
+        MediaItem.fromUri(currentSong.uri)
     }
+
+    // Buscar la posición de la canción seleccionada
+    val startIndex = songs.indexOfFirst {
+        it.uri == song.uri
+    }.coerceAtLeast(0)
+
+    // Cargar TODA la biblioteca como cola
+    mediaController.setMediaItems(
+        mediaItems,
+        startIndex,
+        0L
+    )
+
+    mediaController.prepare()
+    mediaController.play()
+
+    currentSong = song
+    isPlaying = true
+}
 
     private fun playPause() {
 
