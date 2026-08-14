@@ -1,5 +1,6 @@
 package com.blackwalkmusic
 
+import android.content.ComponentName
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -59,20 +60,12 @@ class MainActivity : ComponentActivity() {
             mediaItem: MediaItem?,
             reason: Int
         ) {
-            val uri = mediaItem?.localConfiguration?.uri?.toString()
-
-            currentSong = songs.find {
-                it.uri == uri
-            }
+            updateCurrentSong()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        requestMusicPermission()
-
-        connectToMusicService()
 
         setContent {
             BlackWalkMusicScreen(
@@ -86,23 +79,27 @@ class MainActivity : ComponentActivity() {
                     playPause()
                 },
                 onNext = {
-    controller?.seekToNextMediaItem()
-},
-onPrevious = {
-    controller?.seekToPreviousMediaItem()
-}
+                    nextSong()
+                },
+                onPrevious = {
+                    previousSong()
+                }
+            )
+        }
+
+        requestMusicPermission()
+        connectToMusicService()
     }
 
     private fun connectToMusicService() {
 
-        val sessionToken =
-    SessionToken(
-        this,
-        android.content.ComponentName(
+        val sessionToken = SessionToken(
             this,
-            MusicService::class.java
+            ComponentName(
+                this,
+                MusicService::class.java
+            )
         )
-    )
 
         controllerFuture =
             MediaController.Builder(
@@ -112,95 +109,99 @@ onPrevious = {
 
         controllerFuture.addListener(
             {
-
                 controller = controllerFuture.get()
 
-                controllerFuture.addListener(
-    {
-        controller = controllerFuture.get()
-
-        controller?.addListener(playerListener)
-
-        isPlaying =
-            controller?.isPlaying == true
-    },
-    ContextCompat.getMainExecutor(this)
-)
- {
-    val index = controller?.currentMediaItemIndex ?: -1
-
-    if (index >= 0 && index < songs.size) {
-        currentSong = songs[index]
-        isPlaying = controller?.isPlaying == true
-    }
-}
-                                     )
+                controller?.addListener(playerListener)
 
                 isPlaying =
                     controller?.isPlaying == true
 
+                updateCurrentSong()
             },
             ContextCompat.getMainExecutor(this)
         )
     }
 
-    private fun playSong(song: Song) {
-    val mediaController = controller ?: return
+    private fun updateCurrentSong() {
 
-    // Crear la cola con todas las canciones de la biblioteca
-    val mediaItems = songs.map { currentSong ->
-        MediaItem.fromUri(currentSong.uri)
+        val mediaController = controller ?: return
+
+        val index =
+            mediaController.currentMediaItemIndex
+
+        if (index >= 0 && index < songs.size) {
+            currentSong = songs[index]
+        } else {
+            currentSong = null
+        }
+
+        isPlaying =
+            mediaController.isPlaying
     }
 
-    // Buscar la posición de la canción seleccionada
-    val startIndex = songs.indexOfFirst {
-        it.uri == song.uri
-    }.coerceAtLeast(0)
+    private fun playSong(song: Song) {
 
-    // Cargar TODA la biblioteca como cola
-    mediaController.setMediaItems(
-        mediaItems,
-        startIndex,
-        0L
-    )
+        val mediaController = controller ?: return
 
-    mediaController.prepare()
-    mediaController.play()
+        if (songs.isEmpty()) {
+            return
+        }
 
-    currentSong = song
-    isPlaying = true
-}
+        val mediaItems =
+            songs.map { currentSong ->
+                MediaItem.fromUri(currentSong.uri)
+            }
+
+        val startIndex =
+            songs.indexOfFirst {
+                it.uri == song.uri
+            }.coerceAtLeast(0)
+
+        mediaController.setMediaItems(
+            mediaItems,
+            startIndex,
+            0L
+        )
+
+        mediaController.prepare()
+        mediaController.play()
+
+        currentSong = song
+        isPlaying = true
+    }
 
     private fun playPause() {
-    ...
-} private fun nextSong() {
-    val mediaController = controller ?: return
-
-    if (mediaController.hasNextMediaItem) {
-        mediaController.seekToNextMediaItem()
-        mediaController.play()
-    }
-}
-
-private fun previousSong() {
-    val mediaController = controller ?: return
-
-    if (mediaController.currentPosition > 3000) {
-        mediaController.seekTo(0)
-        return
-    }
-
-    if (mediaController.hasPreviousMediaItem) {
-        mediaController.seekToPreviousMediaItem()
-        mediaController.play()
-    }
-}
 
         val mediaController = controller ?: return
 
         if (mediaController.isPlaying) {
             mediaController.pause()
         } else {
+            mediaController.play()
+        }
+    }
+
+    private fun nextSong() {
+
+        val mediaController = controller ?: return
+
+        if (mediaController.hasNextMediaItem) {
+            mediaController.seekToNextMediaItem()
+            mediaController.play()
+        }
+    }
+
+    private fun previousSong() {
+
+        val mediaController = controller ?: return
+
+        if (mediaController.currentPosition > 3000L) {
+            mediaController.seekTo(0L)
+            return
+        }
+
+        if (mediaController.hasPreviousMediaItem) {
+            mediaController.seekToPreviousMediaItem()
             mediaController.play()
         }
     }
@@ -231,13 +232,19 @@ private fun previousSong() {
             MusicRepository.getSongs(
                 contentResolver
             )
+
+        updateCurrentSong()
     }
 
     override fun onDestroy() {
 
         controller?.removeListener(playerListener)
 
-        MediaController.releaseFuture(controllerFuture)
+        if (::controllerFuture.isInitialized) {
+            MediaController.releaseFuture(controllerFuture)
+        }
+
+        controller = null
 
         super.onDestroy()
     }
@@ -255,12 +262,11 @@ fun BlackWalkMusicScreen(
 ) {
 
     MaterialTheme(
-        colorScheme =
-            darkColorScheme(
-                background = Color.Black,
-                surface = Color(0xFF111111),
-                primary = Color.White
-            )
+        colorScheme = darkColorScheme(
+            background = Color.Black,
+            surface = Color(0xFF111111),
+            primary = Color.White
+        )
     ) {
 
         Surface(
@@ -269,13 +275,12 @@ fun BlackWalkMusicScreen(
         ) {
 
             Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(
-                            horizontal = 18.dp,
-                            vertical = 18.dp
-                        )
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        horizontal = 18.dp,
+                        vertical = 18.dp
+                    )
             ) {
 
                 Text(
@@ -293,8 +298,7 @@ fun BlackWalkMusicScreen(
                 )
 
                 Spacer(
-                    modifier =
-                        Modifier.height(24.dp)
+                    modifier = Modifier.height(24.dp)
                 )
 
                 Text(
@@ -305,17 +309,14 @@ fun BlackWalkMusicScreen(
                 )
 
                 Spacer(
-                    modifier =
-                        Modifier.height(10.dp)
+                    modifier = Modifier.height(10.dp)
                 )
 
                 if (songs.isEmpty()) {
 
                     Box(
-                        modifier =
-                            Modifier.fillMaxSize(),
-                        contentAlignment =
-                            Alignment.Center
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
                     ) {
 
                         Text(
@@ -327,8 +328,7 @@ fun BlackWalkMusicScreen(
                 } else {
 
                     LazyColumn(
-                        modifier =
-                            Modifier.weight(1f)
+                        modifier = Modifier.weight(1f)
                     ) {
 
                         items(
@@ -371,52 +371,44 @@ fun SongItem(
 ) {
 
     Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable {
-                    onClick()
-                }
-                .padding(
-                    vertical = 9.dp
-                ),
-        verticalAlignment =
-            Alignment.CenterVertically
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                onClick()
+            }
+            .padding(
+                vertical = 9.dp
+            ),
+        verticalAlignment = Alignment.CenterVertically
     ) {
 
         Box(
-            modifier =
-                Modifier
-                    .size(58.dp)
-                    .background(
-                        Color(0xFF202020)
-                    ),
-            contentAlignment =
-                Alignment.Center
+            modifier = Modifier
+                .size(58.dp)
+                .background(
+                    Color(0xFF202020)
+                ),
+            contentAlignment = Alignment.Center
         ) {
 
             Icon(
-                imageVector =
-                    Icons.Default.MusicNote,
+                imageVector = Icons.Default.MusicNote,
                 contentDescription = null,
                 tint =
                     if (isCurrent)
                         Color.White
                     else
                         Color.Gray,
-                modifier =
-                    Modifier.size(30.dp)
+                modifier = Modifier.size(30.dp)
             )
         }
 
         Spacer(
-            modifier =
-                Modifier.width(14.dp)
+            modifier = Modifier.width(14.dp)
         )
 
         Column(
-            modifier =
-                Modifier.weight(1f)
+            modifier = Modifier.weight(1f)
         ) {
 
             Text(
@@ -455,51 +447,41 @@ fun MiniPlayer(
 ) {
 
     Surface(
-        modifier =
-            Modifier.fillMaxWidth(),
-        color =
-            Color(0xFF181818),
-        shape =
-            MaterialTheme.shapes.large
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xFF181818),
+        shape = MaterialTheme.shapes.large
     ) {
 
         Column(
-            modifier =
-                Modifier.padding(12.dp)
+            modifier = Modifier.padding(12.dp)
         ) {
 
             Row(
-                verticalAlignment =
-                    Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
 
                 Box(
-                    modifier =
-                        Modifier
-                            .size(55.dp)
-                            .background(
-                                Color(0xFF292929)
-                            ),
-                    contentAlignment =
-                        Alignment.Center
+                    modifier = Modifier
+                        .size(55.dp)
+                        .background(
+                            Color(0xFF292929)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
 
                     Icon(
-                        imageVector =
-                            Icons.Default.MusicNote,
+                        imageVector = Icons.Default.MusicNote,
                         contentDescription = null,
                         tint = Color.Gray
                     )
                 }
 
                 Spacer(
-                    modifier =
-                        Modifier.width(12.dp)
+                    modifier = Modifier.width(12.dp)
                 )
 
                 Column(
-                    modifier =
-                        Modifier.weight(1f)
+                    modifier = Modifier.weight(1f)
                 ) {
 
                     Text(
@@ -519,12 +501,9 @@ fun MiniPlayer(
             }
 
             Row(
-                modifier =
-                    Modifier.fillMaxWidth(),
-                horizontalArrangement =
-                    Arrangement.Center,
-                verticalAlignment =
-                    Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
 
                 IconButton(
@@ -532,10 +511,8 @@ fun MiniPlayer(
                 ) {
 
                     Icon(
-                        imageVector =
-                            Icons.Default.SkipPrevious,
-                        contentDescription =
-                            "Anterior",
+                        imageVector = Icons.Default.SkipPrevious,
+                        contentDescription = "Anterior",
                         tint = Color.White
                     )
                 }
@@ -556,8 +533,7 @@ fun MiniPlayer(
                             else
                                 "Reproducir",
                         tint = Color.White,
-                        modifier =
-                            Modifier.size(34.dp)
+                        modifier = Modifier.size(34.dp)
                     )
                 }
 
@@ -566,10 +542,8 @@ fun MiniPlayer(
                 ) {
 
                     Icon(
-                        imageVector =
-                            Icons.Default.SkipNext,
-                        contentDescription =
-                            "Siguiente",
+                        imageVector = Icons.Default.SkipNext,
+                        contentDescription = "Siguiente",
                         tint = Color.White
                     )
                 }
