@@ -55,40 +55,51 @@ class MainActivity : ComponentActivity() {
             loadMusic()
         }
 
-    private val playerListener = object : Player.Listener {
+    private val playerListener =
+        object : Player.Listener {
 
-        override fun onIsPlayingChanged(isPlayingNow: Boolean) {
-            isPlaying = isPlayingNow
+            override fun onIsPlayingChanged(
+                isPlayingNow: Boolean
+            ) {
+                isPlaying = isPlayingNow
+            }
+
+            override fun onMediaItemTransition(
+                mediaItem: MediaItem?,
+                reason: Int
+            ) {
+                updateCurrentSong()
+            }
         }
 
-        override fun onMediaItemTransition(
-            mediaItem: MediaItem?,
-            reason: Int
-        ) {
-            updateCurrentSong()
-        }
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
         super.onCreate(savedInstanceState)
 
         setContent {
+
             BlackWalkMusicScreen(
                 songs = songs,
                 currentSong = currentSong,
                 isPlaying = isPlaying,
+
                 onSongClick = { song ->
                     playSong(song)
                 },
+
                 onPlayPause = {
                     playPause()
                 },
+
                 onNext = {
                     nextSong()
                 },
+
                 onPrevious = {
                     previousSong()
                 },
+
                 onShuffle = {
                     shuffleSongs()
                 }
@@ -101,13 +112,14 @@ class MainActivity : ComponentActivity() {
 
     private fun connectToMusicService() {
 
-        val sessionToken = SessionToken(
-            this,
-            ComponentName(
+        val sessionToken =
+            SessionToken(
                 this,
-                MusicService::class.java
+                ComponentName(
+                    this,
+                    MusicService::class.java
+                )
             )
-        )
 
         controllerFuture =
             MediaController.Builder(
@@ -117,14 +129,19 @@ class MainActivity : ComponentActivity() {
 
         controllerFuture.addListener(
             {
-                controller = controllerFuture.get()
 
-                controller?.addListener(playerListener)
+                controller =
+                    controllerFuture.get()
+
+                controller?.addListener(
+                    playerListener
+                )
 
                 isPlaying =
                     controller?.isPlaying == true
 
                 updateCurrentSong()
+
             },
             ContextCompat.getMainExecutor(this)
         )
@@ -132,14 +149,22 @@ class MainActivity : ComponentActivity() {
 
     private fun updateCurrentSong() {
 
-        val mediaController = controller ?: return
+        val mediaController =
+            controller ?: return
 
         val index =
             mediaController.currentMediaItemIndex
 
-        if (index >= 0 && index < songs.size) {
-            currentSong = songs[index]
+        if (
+            index >= 0 &&
+            index < songs.size
+        ) {
+
+            currentSong =
+                songs[index]
+
         } else {
+
             currentSong = null
         }
 
@@ -147,9 +172,12 @@ class MainActivity : ComponentActivity() {
             mediaController.isPlaying
     }
 
-    private fun playSong(song: Song) {
+    private fun playSong(
+        song: Song
+    ) {
 
-        val mediaController = controller ?: return
+        val mediaController =
+            controller ?: return
 
         if (songs.isEmpty()) {
             return
@@ -180,7 +208,8 @@ class MainActivity : ComponentActivity() {
 
     private fun playPause() {
 
-        val mediaController = controller ?: return
+        val mediaController =
+            controller ?: return
 
         if (mediaController.isPlaying) {
             mediaController.pause()
@@ -191,9 +220,13 @@ class MainActivity : ComponentActivity() {
 
     private fun nextSong() {
 
-        val mediaController = controller ?: return
+        val mediaController =
+            controller ?: return
 
-        if (mediaController.hasNextMediaItem()) {
+        if (
+            mediaController.hasNextMediaItem()
+        ) {
+
             mediaController.seekToNextMediaItem()
             mediaController.play()
         }
@@ -201,14 +234,22 @@ class MainActivity : ComponentActivity() {
 
     private fun previousSong() {
 
-        val mediaController = controller ?: return
+        val mediaController =
+            controller ?: return
 
-        if (mediaController.currentPosition > 3000L) {
+        if (
+            mediaController.currentPosition >
+            3000L
+        ) {
+
             mediaController.seekTo(0L)
             return
         }
 
-        if (mediaController.hasPreviousMediaItem()) {
+        if (
+            mediaController.hasPreviousMediaItem()
+        ) {
+
             mediaController.seekToPreviousMediaItem()
             mediaController.play()
         }
@@ -216,7 +257,8 @@ class MainActivity : ComponentActivity() {
 
     private fun shuffleSongs() {
 
-        val mediaController = controller ?: return
+        val mediaController =
+            controller ?: return
 
         if (songs.isEmpty()) {
             return
@@ -248,7 +290,9 @@ class MainActivity : ComponentActivity() {
     private fun requestMusicPermission() {
 
         val permissions =
-            if (android.os.Build.VERSION.SDK_INT >= 33) {
+            if (
+                android.os.Build.VERSION.SDK_INT >= 33
+            ) {
 
                 arrayOf(
                     android.Manifest.permission.READ_MEDIA_AUDIO,
@@ -262,7 +306,9 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-        permissionLauncher.launch(permissions)
+        permissionLauncher.launch(
+            permissions
+        )
     }
 
     private fun loadMusic() {
@@ -277,10 +323,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
 
-        controller?.removeListener(playerListener)
+        controller?.removeListener(
+            playerListener
+        )
 
-        if (::controllerFuture.isInitialized) {
-            MediaController.releaseFuture(controllerFuture)
+        if (
+            ::controllerFuture.isInitialized
+        ) {
+
+            MediaController.releaseFuture(
+                controllerFuture
+            )
         }
 
         controller = null
@@ -292,9 +345,16 @@ class MainActivity : ComponentActivity() {
 private enum class SongSort {
 
     TITLE,
+
     ARTIST,
+
     ALBUM,
-    DURATION
+
+    DURATION,
+
+    NEWEST,
+
+    OLDEST
 }
 
 @Composable
@@ -314,7 +374,9 @@ fun BlackWalkMusicScreen(
     }
 
     var sortMode by remember {
-        mutableStateOf(SongSort.TITLE)
+        mutableStateOf(
+            SongSort.TITLE
+        )
     }
 
     var showSortMenu by remember {
@@ -332,23 +394,29 @@ fun BlackWalkMusicScreen(
                 searchText.trim()
 
             val filtered =
+
                 if (query.isEmpty()) {
+
                     songs
+
                 } else {
+
                     songs.filter { song ->
 
                         song.title.contains(
                             query,
                             ignoreCase = true
                         ) ||
-                                song.artist.contains(
-                                    query,
-                                    ignoreCase = true
-                                ) ||
-                                song.album.contains(
-                                    query,
-                                    ignoreCase = true
-                                )
+
+                        song.artist.contains(
+                            query,
+                            ignoreCase = true
+                        ) ||
+
+                        song.album.contains(
+                            query,
+                            ignoreCase = true
+                        )
                     }
                 }
 
@@ -373,10 +441,21 @@ fun BlackWalkMusicScreen(
                     filtered.sortedByDescending {
                         it.duration
                     }
+
+                SongSort.NEWEST ->
+                    filtered.sortedByDescending {
+                        it.dateAdded
+                    }
+
+                SongSort.OLDEST ->
+                    filtered.sortedBy {
+                        it.dateAdded
+                    }
             }
         }
 
     MaterialTheme(
+
         colorScheme =
             darkColorScheme(
                 background = Color.Black,
@@ -386,11 +465,13 @@ fun BlackWalkMusicScreen(
     ) {
 
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                Modifier.fillMaxSize(),
             color = Color.Black
         ) {
 
             Column(
+
                 modifier =
                     Modifier
                         .fillMaxSize()
@@ -401,41 +482,63 @@ fun BlackWalkMusicScreen(
             ) {
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
                     verticalAlignment =
                         Alignment.CenterVertically
                 ) {
 
                     Column(
+
                         modifier =
                             Modifier.weight(1f)
                     ) {
 
                         Text(
-                            text = "BLACKWALK",
-                            color = Color.White,
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold
+                            text =
+                                "BLACKWALK",
+
+                            color =
+                                Color.White,
+
+                            fontSize =
+                                28.sp,
+
+                            fontWeight =
+                                FontWeight.Bold
                         )
 
                         Text(
-                            text = "MUSIC",
-                            color = Color.Gray,
-                            fontSize = 13.sp,
-                            letterSpacing = 4.sp
+                            text =
+                                "MUSIC",
+
+                            color =
+                                Color.Gray,
+
+                            fontSize =
+                                13.sp,
+
+                            letterSpacing =
+                                4.sp
                         )
                     }
 
                     IconButton(
-                        onClick = onShuffle
+                        onClick =
+                            onShuffle
                     ) {
 
                         Icon(
                             imageVector =
                                 Icons.Default.Shuffle,
+
                             contentDescription =
                                 "Reproducción aleatoria",
-                            tint = Color.White
+
+                            tint =
+                                Color.White
                         )
                     }
                 }
@@ -446,25 +549,36 @@ fun BlackWalkMusicScreen(
                 )
 
                 OutlinedTextField(
-                    value = searchText,
+
+                    value =
+                        searchText,
+
                     onValueChange = {
                         searchText = it
                     },
+
                     modifier =
                         Modifier.fillMaxWidth(),
-                    singleLine = true,
+
+                    singleLine =
+                        true,
+
                     leadingIcon = {
 
                         Icon(
                             imageVector =
                                 Icons.Default.Search,
+
                             contentDescription =
                                 null
                         )
                     },
+
                     trailingIcon = {
 
-                        if (searchText.isNotEmpty()) {
+                        if (
+                            searchText.isNotEmpty()
+                        ) {
 
                             IconButton(
                                 onClick = {
@@ -475,12 +589,14 @@ fun BlackWalkMusicScreen(
                                 Icon(
                                     imageVector =
                                         Icons.Default.Clear,
+
                                     contentDescription =
                                         "Limpiar búsqueda"
                                 )
                             }
                         }
                     },
+
                     placeholder = {
 
                         Text(
@@ -488,31 +604,44 @@ fun BlackWalkMusicScreen(
                                 "Buscar canción, artista o álbum"
                         )
                     },
+
                     colors =
                         OutlinedTextFieldDefaults.colors(
+
                             focusedTextColor =
                                 Color.White,
+
                             unfocusedTextColor =
                                 Color.White,
+
                             focusedBorderColor =
                                 Color.White,
+
                             unfocusedBorderColor =
                                 Color(0xFF444444),
+
                             focusedLeadingIconColor =
                                 Color.White,
+
                             unfocusedLeadingIconColor =
                                 Color.Gray,
+
                             focusedTrailingIconColor =
                                 Color.White,
+
                             unfocusedTrailingIconColor =
                                 Color.Gray,
+
                             focusedPlaceholderColor =
                                 Color.Gray,
+
                             unfocusedPlaceholderColor =
                                 Color.Gray,
+
                             cursorColor =
                                 Color.White
                         ),
+
                     shape =
                         RoundedCornerShape(14.dp)
                 )
@@ -523,21 +652,30 @@ fun BlackWalkMusicScreen(
                 )
 
                 Row(
+
                     modifier =
                         Modifier.fillMaxWidth(),
+
                     verticalAlignment =
                         Alignment.CenterVertically
                 ) {
 
                     Column(
+
                         modifier =
                             Modifier.weight(1f)
                     ) {
 
                         Text(
-                            text = "Biblioteca",
-                            color = Color.White,
-                            fontSize = 24.sp,
+                            text =
+                                "Biblioteca",
+
+                            color =
+                                Color.White,
+
+                            fontSize =
+                                24.sp,
+
                             fontWeight =
                                 FontWeight.Bold
                         )
@@ -547,84 +685,162 @@ fun BlackWalkMusicScreen(
                                 if (
                                     searchText.isEmpty()
                                 ) {
+
                                     "${songs.size} canciones"
+
                                 } else {
+
                                     "${filteredSongs.size} resultados"
                                 },
-                            color = Color.Gray,
-                            fontSize = 13.sp
+
+                            color =
+                                Color.Gray,
+
+                            fontSize =
+                                13.sp
                         )
                     }
 
                     Box {
 
                         IconButton(
+
                             onClick = {
+
                                 showSortMenu =
                                     !showSortMenu
                             }
                         ) {
 
                             Icon(
+
                                 imageVector =
                                     Icons.Default.Sort,
+
                                 contentDescription =
                                     "Ordenar",
-                                tint = Color.White
+
+                                tint =
+                                    Color.White
                             )
                         }
 
                         DropdownMenu(
+
                             expanded =
                                 showSortMenu,
+
                             onDismissRequest = {
-                                showSortMenu = false
+                                showSortMenu =
+                                    false
                             }
                         ) {
 
                             DropdownMenuItem(
+
                                 text = {
-                                    Text("Título")
+                                    Text(
+                                        "Más recientes"
+                                    )
                                 },
+
                                 onClick = {
+
+                                    sortMode =
+                                        SongSort.NEWEST
+
+                                    showSortMenu =
+                                        false
+                                }
+                            )
+
+                            DropdownMenuItem(
+
+                                text = {
+                                    Text(
+                                        "Más antiguas"
+                                    )
+                                },
+
+                                onClick = {
+
+                                    sortMode =
+                                        SongSort.OLDEST
+
+                                    showSortMenu =
+                                        false
+                                }
+                            )
+
+                            HorizontalDivider()
+
+                            DropdownMenuItem(
+
+                                text = {
+                                    Text(
+                                        "Título"
+                                    )
+                                },
+
+                                onClick = {
+
                                     sortMode =
                                         SongSort.TITLE
+
                                     showSortMenu =
                                         false
                                 }
                             )
 
                             DropdownMenuItem(
+
                                 text = {
-                                    Text("Artista")
+                                    Text(
+                                        "Artista"
+                                    )
                                 },
+
                                 onClick = {
+
                                     sortMode =
                                         SongSort.ARTIST
+
                                     showSortMenu =
                                         false
                                 }
                             )
 
                             DropdownMenuItem(
+
                                 text = {
-                                    Text("Álbum")
+                                    Text(
+                                        "Álbum"
+                                    )
                                 },
+
                                 onClick = {
+
                                     sortMode =
                                         SongSort.ALBUM
+
                                     showSortMenu =
                                         false
                                 }
                             )
 
                             DropdownMenuItem(
+
                                 text = {
-                                    Text("Duración")
+                                    Text(
+                                        "Duración"
+                                    )
                                 },
+
                                 onClick = {
+
                                     sortMode =
                                         SongSort.DURATION
+
                                     showSortMenu =
                                         false
                                 }
@@ -638,29 +854,38 @@ fun BlackWalkMusicScreen(
                         Modifier.height(8.dp)
                 )
 
-                if (filteredSongs.isEmpty()) {
+                if (
+                    filteredSongs.isEmpty()
+                ) {
 
                     Box(
+
                         modifier =
                             Modifier
                                 .weight(1f)
                                 .fillMaxWidth(),
+
                         contentAlignment =
                             Alignment.Center
                     ) {
 
                         Column(
+
                             horizontalAlignment =
                                 Alignment.CenterHorizontally
                         ) {
 
                             Icon(
+
                                 imageVector =
                                     Icons.Default.MusicNote,
+
                                 contentDescription =
                                     null,
+
                                 tint =
                                     Color.DarkGray,
+
                                 modifier =
                                     Modifier.size(60.dp)
                             )
@@ -671,15 +896,22 @@ fun BlackWalkMusicScreen(
                             )
 
                             Text(
+
                                 text =
+
                                     if (
                                         searchText.isEmpty()
                                     ) {
+
                                         "No se encontraron canciones"
+
                                     } else {
+
                                         "No hay resultados"
                                     },
-                                color = Color.Gray
+
+                                color =
+                                    Color.Gray
                             )
                         }
                     }
@@ -687,22 +919,31 @@ fun BlackWalkMusicScreen(
                 } else {
 
                     LazyColumn(
+
                         modifier =
                             Modifier.weight(1f)
                     ) {
 
                         items(
-                            items = filteredSongs,
+
+                            items =
+                                filteredSongs,
+
                             key = {
                                 it.id
                             }
+
                         ) { song ->
 
                             SongItem(
-                                song = song,
+
+                                song =
+                                    song,
+
                                 isCurrent =
                                     currentSong?.id ==
                                             song.id,
+
                                 onClick = {
                                     onSongClick(song)
                                 }
@@ -711,14 +952,26 @@ fun BlackWalkMusicScreen(
                     }
                 }
 
-                if (currentSong != null) {
+                if (
+                    currentSong != null
+                ) {
 
                     MiniPlayer(
-                        song = currentSong,
-                        isPlaying = isPlaying,
-                        onPlayPause = onPlayPause,
-                        onNext = onNext,
-                        onPrevious = onPrevious
+
+                        song =
+                            currentSong,
+
+                        isPlaying =
+                            isPlaying,
+
+                        onPlayPause =
+                            onPlayPause,
+
+                        onNext =
+                            onNext,
+
+                        onPrevious =
+                            onPrevious
                     )
                 }
             }
@@ -734,6 +987,7 @@ fun SongItem(
 ) {
 
     Row(
+
         modifier =
             Modifier
                 .fillMaxWidth()
@@ -743,31 +997,39 @@ fun SongItem(
                 .padding(
                     vertical = 9.dp
                 ),
+
         verticalAlignment =
             Alignment.CenterVertically
     ) {
 
         Box(
+
             modifier =
                 Modifier
                     .size(58.dp)
                     .background(
                         Color(0xFF202020)
                     ),
+
             contentAlignment =
                 Alignment.Center
         ) {
 
             Icon(
+
                 imageVector =
                     Icons.Default.MusicNote,
+
                 contentDescription =
                     null,
+
                 tint =
+
                     if (isCurrent)
                         Color.White
                     else
                         Color.Gray,
+
                 modifier =
                     Modifier.size(30.dp)
             )
@@ -784,35 +1046,63 @@ fun SongItem(
         ) {
 
             Text(
-                text = song.title,
+
+                text =
+                    song.title,
+
                 color =
+
                     if (isCurrent)
                         Color.White
                     else
                         Color(0xFFE8E8E8),
-                fontSize = 16.sp,
+
+                fontSize =
+                    16.sp,
+
                 fontWeight =
+
                     if (isCurrent)
                         FontWeight.Bold
                     else
                         FontWeight.Normal,
-                maxLines = 2
+
+                maxLines =
+                    2
             )
 
             Text(
-                text = song.artist,
-                color = Color.Gray,
-                fontSize = 13.sp,
-                maxLines = 1
+
+                text =
+                    song.artist,
+
+                color =
+                    Color.Gray,
+
+                fontSize =
+                    13.sp,
+
+                maxLines =
+                    1
             )
 
-            if (song.album.isNotBlank()) {
+            if (
+                song.album.isNotBlank()
+            ) {
 
                 Text(
-                    text = song.album,
-                    color = Color.DarkGray,
-                    fontSize = 11.sp,
-                    maxLines = 1
+
+                    text =
+                        song.album,
+
+                    color =
+                        Color.DarkGray,
+
+                    fontSize =
+                        11.sp,
+
+                    maxLines =
+                        1
                 )
             }
         }
@@ -829,40 +1119,50 @@ fun MiniPlayer(
 ) {
 
     Surface(
+
         modifier =
             Modifier.fillMaxWidth(),
+
         color =
             Color(0xFF181818),
+
         shape =
             MaterialTheme.shapes.large
     ) {
 
         Column(
+
             modifier =
                 Modifier.padding(12.dp)
         ) {
 
             Row(
+
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
 
                 Box(
+
                     modifier =
                         Modifier
                             .size(55.dp)
                             .background(
                                 Color(0xFF292929)
                             ),
+
                     contentAlignment =
                         Alignment.Center
                 ) {
 
                     Icon(
+
                         imageVector =
                             Icons.Default.MusicNote,
+
                         contentDescription =
                             null,
+
                         tint =
                             Color.Gray
                     )
@@ -874,81 +1174,115 @@ fun MiniPlayer(
                 )
 
                 Column(
+
                     modifier =
                         Modifier.weight(1f)
                 ) {
 
                     Text(
-                        text = song.title,
-                        color = Color.White,
+
+                        text =
+                            song.title,
+
+                        color =
+                            Color.White,
+
                         fontWeight =
                             FontWeight.Bold,
-                        maxLines = 1
+
+                        maxLines =
+                            1
                     )
 
                     Text(
-                        text = song.artist,
-                        color = Color.Gray,
-                        fontSize = 12.sp,
-                        maxLines = 1
+
+                        text =
+                            song.artist,
+
+                        color =
+                            Color.Gray,
+
+                        fontSize =
+                            12.sp,
+
+                        maxLines =
+                            1
                     )
                 }
             }
 
             Row(
+
                 modifier =
                     Modifier.fillMaxWidth(),
+
                 horizontalArrangement =
                     Arrangement.Center,
+
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
 
                 IconButton(
-                    onClick = onPrevious
+                    onClick =
+                        onPrevious
                 ) {
 
                     Icon(
+
                         imageVector =
                             Icons.Default.SkipPrevious,
+
                         contentDescription =
                             "Anterior",
+
                         tint =
                             Color.White
                     )
                 }
 
                 IconButton(
-                    onClick = onPlayPause
+                    onClick =
+                        onPlayPause
                 ) {
 
                     Icon(
+
                         imageVector =
+
                             if (isPlaying)
                                 Icons.Default.Pause
                             else
                                 Icons.Default.PlayArrow,
+
                         contentDescription =
+
                             if (isPlaying)
                                 "Pausar"
                             else
                                 "Reproducir",
+
                         tint =
                             Color.White,
+
                         modifier =
                             Modifier.size(34.dp)
                     )
                 }
 
                 IconButton(
-                    onClick = onNext
+                    onClick =
+                        onNext
                 ) {
 
                     Icon(
+
                         imageVector =
                             Icons.Default.SkipNext,
+
                         contentDescription =
                             "Siguiente",
+
                         tint =
                             Color.White
                     )
