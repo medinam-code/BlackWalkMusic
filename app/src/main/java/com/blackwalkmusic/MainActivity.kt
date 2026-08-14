@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,11 +47,44 @@ import coil.compose.SubcomposeAsyncImage
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.delay
 
-private val CyberBlack = Color(0xFF050505)
-private val CyberSurface = Color(0xFF101010)
-private val CyberSurface2 = Color(0xFF171717)
-private val CyberBorder = Color(0xFF303030)
-private val CyberGray = Color(0xFF858585)
+/*
+ * ============================================================
+ * CYBERPUNK GAMER PALETTE
+ * ============================================================
+ *
+ * IMPORTANTE:
+ *
+ * Estos colores NO se utilizan para la marca.
+ *
+ * La marca TERERÉ MUSIC PY conserva exclusivamente:
+ *
+ * ROJO -> BLANCO -> AZUL
+ *
+ * Todo el resto utiliza negro / verde neón / gris.
+ */
+
+private val CyberBlack = Color(0xFF030403)
+private val CyberBlack2 = Color(0xFF070907)
+private val CyberSurface = Color(0xFF0B0F0B)
+private val CyberSurface2 = Color(0xFF111711)
+
+private val CyberGreen = Color(0xFF39FF14)
+private val CyberGreenBright = Color(0xFF66FF33)
+private val CyberGreenDark = Color(0xFF123A0C)
+
+private val CyberBorder = Color(0xFF1C4218)
+private val CyberBorderBright = Color(0xFF2D7A24)
+
+private val CyberGray = Color(0xFF7E897E)
+private val CyberGrayDark = Color(0xFF4B514B)
+
+private val CyberWhite = Color(0xFFE9F3E9)
+
+/*
+ * ============================================================
+ * COLORES EXCLUSIVOS DE LA MARCA
+ * ============================================================
+ */
 
 private val ParaguayRed = Color(0xFFD90012)
 private val ParaguayWhite = Color(0xFFF5F5F5)
@@ -185,12 +219,9 @@ class MainActivity : ComponentActivity() {
 
                     onSeek = { position ->
 
-                        controller?.seekTo(
-                            position
-                        )
+                        controller?.seekTo(position)
 
-                        currentPosition =
-                            position
+                        currentPosition = position
                     },
 
                     onShuffle = {
@@ -231,10 +262,7 @@ class MainActivity : ComponentActivity() {
 
                     onOpenPlayer = {
 
-                        if (
-                            currentSong != null
-                        ) {
-
+                        if (currentSong != null) {
                             showFullPlayer = true
                         }
                     }
@@ -353,17 +381,13 @@ class MainActivity : ComponentActivity() {
         val mediaController =
             controller ?: return
 
-        if (
-            songs.isEmpty()
-        ) {
+        if (songs.isEmpty()) {
             return
         }
 
         val mediaItems =
             songs.map {
-                MediaItem.fromUri(
-                    it.uri
-                )
+                MediaItem.fromUri(it.uri)
             }
 
         val startIndex =
@@ -459,9 +483,7 @@ class MainActivity : ComponentActivity() {
         val mediaController =
             controller ?: return
 
-        if (
-            songs.isEmpty()
-        ) {
+        if (songs.isEmpty()) {
             return
         }
 
@@ -470,9 +492,7 @@ class MainActivity : ComponentActivity() {
 
         val mediaItems =
             shuffledSongs.map {
-                MediaItem.fromUri(
-                    it.uri
-                )
+                MediaItem.fromUri(it.uri)
             }
 
         mediaController.setMediaItems(
@@ -590,6 +610,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/*
+ * ============================================================
+ * MARCA
+ *
+ * ÚNICA PARTE DE LA INTERFAZ QUE UTILIZA:
+ *
+ * ROJO - BLANCO - AZUL
+ * ============================================================
+ */
+
 @Composable
 fun TerereBrand(
     modifier: Modifier = Modifier
@@ -662,6 +692,12 @@ fun TerereBrand(
         }
     }
 }
+
+/*
+ * ============================================================
+ * PANTALLA PRINCIPAL
+ * ============================================================
+ */
 
 @Composable
 fun BlackWalkMusicScreen(
@@ -772,7 +808,16 @@ fun BlackWalkMusicScreen(
                     CyberSurface,
 
                 primary =
-                    ParaguayWhite
+                    CyberGreen,
+
+                onPrimary =
+                    Color.Black,
+
+                secondary =
+                    CyberGreen,
+
+                onSecondary =
+                    Color.Black
             )
     ) {
 
@@ -793,6 +838,10 @@ fun BlackWalkMusicScreen(
                             vertical = 18.dp
                         )
             ) {
+
+                /*
+                 * CABECERA
+                 */
 
                 Row(
                     modifier =
@@ -820,7 +869,7 @@ fun BlackWalkMusicScreen(
                                 "Aleatorio",
 
                             tint =
-                                ParaguayWhite
+                                CyberGreen
                         )
                     }
                 }
@@ -829,6 +878,10 @@ fun BlackWalkMusicScreen(
                     modifier =
                         Modifier.height(18.dp)
                 )
+
+                /*
+                 * BUSCADOR CYBERPUNK
+                 */
 
                 OutlinedTextField(
                     value =
@@ -839,7 +892,20 @@ fun BlackWalkMusicScreen(
                     },
 
                     modifier =
-                        Modifier.fillMaxWidth(),
+                        Modifier
+                            .fillMaxWidth()
+                            .border(
+                                width = 1.dp,
+                                color =
+                                    if (
+                                        searchText.isNotEmpty()
+                                    )
+                                        CyberBorderBright
+                                    else
+                                        CyberBorder,
+                                shape =
+                                    RoundedCornerShape(14.dp)
+                            ),
 
                     singleLine = true,
 
@@ -853,7 +919,7 @@ fun BlackWalkMusicScreen(
                                 null,
 
                             tint =
-                                CyberGray
+                                CyberGreen
                         )
                     },
 
@@ -877,7 +943,7 @@ fun BlackWalkMusicScreen(
                                         "Limpiar",
 
                                     tint =
-                                        ParaguayWhite
+                                        CyberGray
                                 )
                             }
                         }
@@ -887,10 +953,13 @@ fun BlackWalkMusicScreen(
 
                         Text(
                             text =
-                                "Buscar canción, artista o álbum",
+                                "BUSCAR CANCIÓN, ARTISTA O ÁLBUM",
 
                             color =
-                                Color(0xFF666666)
+                                CyberGrayDark,
+
+                            fontSize =
+                                12.sp
                         )
                     },
 
@@ -898,31 +967,25 @@ fun BlackWalkMusicScreen(
                         OutlinedTextFieldDefaults.colors(
 
                             focusedTextColor =
-                                ParaguayWhite,
+                                CyberWhite,
 
                             unfocusedTextColor =
-                                ParaguayWhite,
+                                CyberWhite,
 
                             focusedBorderColor =
-                                ParaguayRed,
+                                CyberGreen,
 
                             unfocusedBorderColor =
                                 CyberBorder,
 
-                            focusedLeadingIconColor =
-                                CyberGray,
-
-                            unfocusedLeadingIconColor =
-                                CyberGray,
-
-                            focusedTrailingIconColor =
-                                ParaguayWhite,
-
-                            unfocusedTrailingIconColor =
-                                CyberGray,
-
                             cursorColor =
-                                ParaguayRed
+                                CyberGreen,
+
+                            focusedLabelColor =
+                                CyberGreen,
+
+                            unfocusedLabelColor =
+                                CyberGray
                         ),
 
                     shape =
@@ -931,8 +994,12 @@ fun BlackWalkMusicScreen(
 
                 Spacer(
                     modifier =
-                        Modifier.height(16.dp)
+                        Modifier.height(18.dp)
                 )
+
+                /*
+                 * CABECERA DE BIBLIOTECA
+                 */
 
                 Row(
                     modifier =
@@ -952,7 +1019,7 @@ fun BlackWalkMusicScreen(
                                 "BIBLIOTECA",
 
                             color =
-                                ParaguayWhite,
+                                CyberWhite,
 
                             fontSize =
                                 23.sp,
@@ -961,7 +1028,7 @@ fun BlackWalkMusicScreen(
                                 FontWeight.Bold,
 
                             letterSpacing =
-                                1.sp
+                                2.sp
                         )
 
                         Text(
@@ -970,18 +1037,21 @@ fun BlackWalkMusicScreen(
                                     searchText.isEmpty()
                                 ) {
 
-                                    "${songs.size} canciones"
+                                    "${songs.size} CANCIONES"
 
                                 } else {
 
-                                    "${filteredSongs.size} resultados"
+                                    "${filteredSongs.size} RESULTADOS"
                                 },
 
                             color =
-                                CyberGray,
+                                CyberGreen,
 
                             fontSize =
-                                13.sp
+                                11.sp,
+
+                            letterSpacing =
+                                1.sp
                         )
                     }
 
@@ -1003,7 +1073,7 @@ fun BlackWalkMusicScreen(
                                     "Ordenar",
 
                                 tint =
-                                    ParaguayWhite
+                                    CyberGreen
                             )
                         }
 
@@ -1015,13 +1085,18 @@ fun BlackWalkMusicScreen(
 
                                 showSortMenu =
                                     false
-                            }
+                            },
+
+                            containerColor =
+                                CyberSurface
                         ) {
 
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        "Más recientes"
+                                        "Más recientes",
+                                        color =
+                                            CyberWhite
                                     )
                                 },
 
@@ -1038,7 +1113,9 @@ fun BlackWalkMusicScreen(
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        "Más antiguas"
+                                        "Más antiguas",
+                                        color =
+                                            CyberWhite
                                     )
                                 },
 
@@ -1052,11 +1129,18 @@ fun BlackWalkMusicScreen(
                                 }
                             )
 
-                            HorizontalDivider()
+                            HorizontalDivider(
+                                color =
+                                    CyberBorder
+                            )
 
                             DropdownMenuItem(
                                 text = {
-                                    Text("Título")
+                                    Text(
+                                        "Título",
+                                        color =
+                                            CyberWhite
+                                    )
                                 },
 
                                 onClick = {
@@ -1071,7 +1155,11 @@ fun BlackWalkMusicScreen(
 
                             DropdownMenuItem(
                                 text = {
-                                    Text("Artista")
+                                    Text(
+                                        "Artista",
+                                        color =
+                                            CyberWhite
+                                    )
                                 },
 
                                 onClick = {
@@ -1086,7 +1174,11 @@ fun BlackWalkMusicScreen(
 
                             DropdownMenuItem(
                                 text = {
-                                    Text("Álbum")
+                                    Text(
+                                        "Álbum",
+                                        color =
+                                            CyberWhite
+                                    )
                                 },
 
                                 onClick = {
@@ -1101,7 +1193,11 @@ fun BlackWalkMusicScreen(
 
                             DropdownMenuItem(
                                 text = {
-                                    Text("Duración")
+                                    Text(
+                                        "Duración",
+                                        color =
+                                            CyberWhite
+                                    )
                                 },
 
                                 onClick = {
@@ -1121,6 +1217,10 @@ fun BlackWalkMusicScreen(
                     modifier =
                         Modifier.height(8.dp)
                 )
+
+                /*
+                 * LISTA DE CANCIONES
+                 */
 
                 if (
                     filteredSongs.isEmpty()
@@ -1156,15 +1256,21 @@ fun BlackWalkMusicScreen(
                                         searchText.isEmpty()
                                     ) {
 
-                                        "No se encontraron canciones"
+                                        "NO SE ENCONTRARON CANCIONES"
 
                                     } else {
 
-                                        "No hay resultados"
+                                        "NO HAY RESULTADOS"
                                     },
 
                                 color =
-                                    CyberGray
+                                    CyberGray,
+
+                                fontSize =
+                                    12.sp,
+
+                                letterSpacing =
+                                    1.sp
                             )
                         }
                     }
@@ -1173,7 +1279,12 @@ fun BlackWalkMusicScreen(
 
                     LazyColumn(
                         modifier =
-                            Modifier.weight(1f)
+                            Modifier.weight(1f),
+
+                        contentPadding =
+                            PaddingValues(
+                                bottom = 8.dp
+                            )
                     ) {
 
                         items(
@@ -1194,14 +1305,16 @@ fun BlackWalkMusicScreen(
                                         song.id,
 
                                 onClick = {
-                                    onSongClick(
-                                        song
-                                    )
+                                    onSongClick(song)
                                 }
                             )
                         }
                     }
                 }
+
+                /*
+                 * MINI PLAYER
+                 */
 
                 if (
                     currentSong != null
@@ -1232,6 +1345,12 @@ fun BlackWalkMusicScreen(
     }
 }
 
+/*
+ * ============================================================
+ * ITEM DE CANCIÓN
+ * ============================================================
+ */
+
 @Composable
 fun SongItem(
     song: Song,
@@ -1247,7 +1366,7 @@ fun SongItem(
                     onClick()
                 }
                 .padding(
-                    vertical = 8.dp
+                    vertical = 9.dp
                 ),
 
         verticalAlignment =
@@ -1278,9 +1397,9 @@ fun SongItem(
 
                 color =
                     if (isCurrent)
-                        ParaguayWhite
+                        CyberGreenBright
                     else
-                        Color(0xFFE5E5E5),
+                        CyberWhite,
 
                 fontSize =
                     16.sp,
@@ -1318,7 +1437,7 @@ fun SongItem(
                         song.album,
 
                     color =
-                        Color(0xFF555555),
+                        CyberGrayDark,
 
                     fontSize =
                         11.sp,
@@ -1336,15 +1455,26 @@ fun SongItem(
             Box(
                 modifier =
                     Modifier
-                        .size(7.dp)
+                        .size(8.dp)
                         .clip(CircleShape)
                         .background(
-                            ParaguayRed
+                            CyberGreen
+                        )
+                        .border(
+                            1.dp,
+                            CyberGreenBright,
+                            CircleShape
                         )
             )
         }
     }
 }
+
+/*
+ * ============================================================
+ * CARÁTULA
+ * ============================================================
+ */
 
 @Composable
 fun AlbumArt(
@@ -1365,6 +1495,11 @@ fun AlbumArt(
                 )
                 .background(
                     CyberSurface2
+                )
+                .border(
+                    1.dp,
+                    CyberBorder,
+                    RoundedCornerShape(10.dp)
                 ),
 
         contentAlignment =
@@ -1403,6 +1538,12 @@ fun AlbumArt(
     }
 }
 
+/*
+ * ============================================================
+ * CARÁTULA CYBERPUNK
+ * ============================================================
+ */
+
 @Composable
 fun GenericAlbumArt(
     size: Dp
@@ -1416,7 +1557,12 @@ fun GenericAlbumArt(
                     RoundedCornerShape(10.dp)
                 )
                 .background(
-                    Color(0xFF0A0A0A)
+                    CyberBlack
+                )
+                .border(
+                    1.dp,
+                    CyberBorderBright,
+                    RoundedCornerShape(10.dp)
                 ),
 
         contentAlignment =
@@ -1436,7 +1582,7 @@ fun GenericAlbumArt(
                     null,
 
                 tint =
-                    ParaguayRed,
+                    CyberGreen,
 
                 modifier =
                     Modifier.size(
@@ -1449,7 +1595,7 @@ fun GenericAlbumArt(
                     "T•PY",
 
                 color =
-                    ParaguayWhite,
+                    CyberGreenBright,
 
                 fontSize =
                     (size.value * 0.11f).sp,
@@ -1463,6 +1609,12 @@ fun GenericAlbumArt(
         }
     }
 }
+
+/*
+ * ============================================================
+ * MINI PLAYER
+ * ============================================================
+ */
 
 @Composable
 fun MiniPlayer(
@@ -1483,14 +1635,16 @@ fun MiniPlayer(
                 },
 
         color =
-            Color(0xFF111111),
+            CyberSurface,
 
         shape =
             RoundedCornerShape(18.dp),
 
         border =
-            ButtonDefaults
-                .outlinedButtonBorder
+            BorderStroke(
+                1.dp,
+                CyberBorderBright
+            )
     ) {
 
         Column(
@@ -1526,7 +1680,7 @@ fun MiniPlayer(
                             song.title,
 
                         color =
-                            ParaguayWhite,
+                            CyberWhite,
 
                         fontWeight =
                             FontWeight.Bold,
@@ -1558,7 +1712,7 @@ fun MiniPlayer(
                         "Abrir reproductor",
 
                     tint =
-                        CyberGray
+                        CyberGreen
                 )
             }
 
@@ -1591,7 +1745,7 @@ fun MiniPlayer(
                             "Anterior",
 
                         tint =
-                            ParaguayWhite
+                            CyberWhite
                     )
                 }
 
@@ -1614,7 +1768,7 @@ fun MiniPlayer(
                                 "Reproducir",
 
                         tint =
-                            ParaguayWhite,
+                            CyberGreen,
 
                         modifier =
                             Modifier.size(34.dp)
@@ -1634,13 +1788,19 @@ fun MiniPlayer(
                             "Siguiente",
 
                         tint =
-                            ParaguayWhite
+                            CyberWhite
                     )
                 }
             }
         }
     }
 }
+
+/*
+ * ============================================================
+ * REPRODUCTOR COMPLETO
+ * ============================================================
+ */
 
 @Composable
 fun FullPlayerScreen(
@@ -1681,6 +1841,10 @@ fun FullPlayerScreen(
                 )
     ) {
 
+        /*
+         * CABECERA
+         */
+
         Row(
             modifier =
                 Modifier.fillMaxWidth(),
@@ -1702,7 +1866,7 @@ fun FullPlayerScreen(
                         "Volver",
 
                     tint =
-                        ParaguayWhite
+                        CyberGreen
                 )
             }
 
@@ -1711,7 +1875,7 @@ fun FullPlayerScreen(
                     "TERERÉ // NOW PLAYING",
 
                 color =
-                    CyberGray,
+                    CyberGreen,
 
                 fontSize =
                     11.sp,
@@ -1728,6 +1892,10 @@ fun FullPlayerScreen(
             modifier =
                 Modifier.height(20.dp)
         )
+
+        /*
+         * CARÁTULA PRINCIPAL
+         */
 
         AlbumArt(
             song =
@@ -1747,12 +1915,16 @@ fun FullPlayerScreen(
                 Modifier.height(28.dp)
         )
 
+        /*
+         * INFORMACIÓN DE LA CANCIÓN
+         */
+
         Text(
             text =
                 song.title,
 
             color =
-                ParaguayWhite,
+                CyberWhite,
 
             fontSize =
                 25.sp,
@@ -1774,7 +1946,7 @@ fun FullPlayerScreen(
                 song.artist,
 
             color =
-                CyberGray,
+                CyberGreen,
 
             fontSize =
                 16.sp,
@@ -1792,7 +1964,7 @@ fun FullPlayerScreen(
                     song.album,
 
                 color =
-                    Color(0xFF555555),
+                    CyberGray,
 
                 fontSize =
                     13.sp,
@@ -1807,11 +1979,16 @@ fun FullPlayerScreen(
                 Modifier.height(20.dp)
         )
 
+        /*
+         * BARRA DE PROGRESO
+         */
+
         Slider(
             value =
                 safePosition.toFloat(),
 
             onValueChange = {
+
                 onSeek(
                     it.toLong()
                 )
@@ -1827,13 +2004,13 @@ fun FullPlayerScreen(
                 SliderDefaults.colors(
 
                     thumbColor =
-                        ParaguayRed,
+                        CyberGreen,
 
                     activeTrackColor =
-                        ParaguayRed,
+                        CyberGreen,
 
                     inactiveTrackColor =
-                        Color(0xFF333333)
+                        CyberBorder
                 )
         )
 
@@ -1877,6 +2054,10 @@ fun FullPlayerScreen(
                 Modifier.height(22.dp)
         )
 
+        /*
+         * CONTROLES
+         */
+
         Row(
             modifier =
                 Modifier.fillMaxWidth(),
@@ -1902,7 +2083,7 @@ fun FullPlayerScreen(
 
                     tint =
                         if (shuffleEnabled)
-                            ParaguayRed
+                            CyberGreen
                         else
                             CyberGray
                 )
@@ -1921,12 +2102,16 @@ fun FullPlayerScreen(
                         "Anterior",
 
                     tint =
-                        ParaguayWhite,
+                        CyberWhite,
 
                     modifier =
                         Modifier.size(38.dp)
                 )
             }
+
+            /*
+             * BOTÓN PRINCIPAL
+             */
 
             IconButton(
                 onClick =
@@ -1936,7 +2121,12 @@ fun FullPlayerScreen(
                     Modifier
                         .size(72.dp)
                         .background(
-                            ParaguayWhite,
+                            CyberGreen,
+                            CircleShape
+                        )
+                        .border(
+                            2.dp,
+                            CyberGreenBright,
                             CircleShape
                         )
             ) {
@@ -1975,7 +2165,7 @@ fun FullPlayerScreen(
                         "Siguiente",
 
                     tint =
-                        ParaguayWhite,
+                        CyberWhite,
 
                     modifier =
                         Modifier.size(38.dp)
@@ -2004,9 +2194,9 @@ fun FullPlayerScreen(
                     tint =
                         if (
                             repeatMode !=
-                                Player.REPEAT_MODE_OFF
+                            Player.REPEAT_MODE_OFF
                         )
-                            ParaguayRed
+                            CyberGreen
                         else
                             CyberGray
                 )
@@ -2018,6 +2208,13 @@ fun FullPlayerScreen(
                 Modifier.height(24.dp)
         )
 
+        /*
+         * MARCA
+         *
+         * Esta es la única parte donde vuelven
+         * a aparecer rojo / blanco / azul.
+         */
+
         TerereBrand(
             modifier =
                 Modifier
@@ -2028,6 +2225,12 @@ fun FullPlayerScreen(
         )
     }
 }
+
+/*
+ * ============================================================
+ * FORMATO DE TIEMPO
+ * ============================================================
+ */
 
 private fun formatTime(
     milliseconds: Long
