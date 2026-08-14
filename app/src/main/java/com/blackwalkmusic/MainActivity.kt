@@ -86,17 +86,11 @@ class MainActivity : ComponentActivity() {
                     playPause()
                 },
                 onNext = {
-                    controller?.seekToNextMediaItem(previousButton.setOnClickListener {
-    previousSong()
-                    })
-                },
-                onPrevious = {
-                    controller?.seekToPreviousMediaItem(nextButton.setOnClickListener {
-    nextSong()
-                    })
-                }
-            )
-        }
+    controller?.seekToNextMediaItem()
+},
+onPrevious = {
+    controller?.seekToPreviousMediaItem()
+}
     }
 
     private fun connectToMusicService() {
@@ -121,9 +115,17 @@ class MainActivity : ComponentActivity() {
 
                 controller = controllerFuture.get()
 
-                controller?.addListener(playerListener) override fun onMediaItemTransition(
-    mediaItem: MediaItem?,
-    reason: Int
+                controllerFuture.addListener(
+    {
+        controller = controllerFuture.get()
+
+        controller?.addListener(playerListener)
+
+        isPlaying =
+            controller?.isPlaying == true
+    },
+    ContextCompat.getMainExecutor(this)
+)
  {
     val index = controller?.currentMediaItemIndex ?: -1
 
