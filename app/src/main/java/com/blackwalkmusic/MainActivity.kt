@@ -1,5 +1,3 @@
-MainActivity.kt completo
-
 package com.blackwalkmusic
 
 import android.content.ComponentName
@@ -18,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
@@ -50,6 +47,30 @@ import androidx.media3.session.SessionToken
 import coil.compose.SubcomposeAsyncImage
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.delay
+
+/*
+ * ============================================================
+ * SONG
+ * ============================================================
+ *
+ * Esta clase debe existir una sola vez en el proyecto.
+ *
+ * Si ya tienes otra clase Song en otro archivo, elimina esta
+ * definición y conserva solamente la que ya tengas.
+ *
+ * ============================================================
+ */
+
+data class Song(
+    val id: Long,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val albumId: Long,
+    val duration: Long,
+    val dateAdded: Long,
+    val uri: String
+)
 
 /*
  * ============================================================
@@ -108,6 +129,27 @@ class MainActivity : ComponentActivity() {
         null
     )
 
+    /*
+     * ========================================================
+     * COLA CACHEADA
+     *
+     * IMPORTANTE:
+     *
+     * Antes se ejecutaba getCurrentQueue() directamente
+     * dentro de setContent.
+     *
+     * Eso podía recalcular toda la cola durante las
+     * recomposiciones y afectar el scroll.
+     *
+     * Ahora la cola se mantiene en memoria y solamente se
+     * actualiza cuando realmente cambia.
+     * ========================================================
+     */
+
+    private var currentQueue by mutableStateOf<List<Song>>(
+        emptyList()
+    )
+
     private var isPlaying by mutableStateOf(false)
 
     private var currentPosition by mutableLongStateOf(0L)
@@ -124,12 +166,24 @@ class MainActivity : ComponentActivity() {
         emptySet()
     )
 
+    /*
+     * ========================================================
+     * PERMISOS
+     * ========================================================
+     */
+
     private val permissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) {
             loadMusic()
         }
+
+    /*
+     * ========================================================
+     * PLAYER LISTENER
+     * ========================================================
+     */
 
     private val playerListener =
         object : Player.Listener {
@@ -144,7 +198,11 @@ class MainActivity : ComponentActivity() {
                 mediaItem: MediaItem?,
                 reason: Int
             ) {
+
                 updateCurrentSong()
+
+                updateCurrentQueue()
+
                 updateProgress()
             }
 
@@ -163,16 +221,27 @@ class MainActivity : ComponentActivity() {
             override fun onShuffleModeEnabledChanged(
                 shuffleModeEnabled: Boolean
             ) {
-                shuffleEnabled = shuffleModeEnabled
+                shuffleEnabled =
+                    shuffleModeEnabled
             }
 
             override fun onTimelineChanged(
-                timeline: androidx.media3.common.Timeline,
+                timeline:
+                    androidx.media3.common.Timeline,
                 reason: Int
             ) {
+
                 updateCurrentSong()
+
+                updateCurrentQueue()
             }
         }
+
+    /*
+     * ============================================================
+     * ON CREATE
+     * ============================================================
+     */
 
     override fun onCreate(
         savedInstanceState: Bundle?
@@ -188,6 +257,13 @@ class MainActivity : ComponentActivity() {
             var showFullPlayer by remember {
                 mutableStateOf(false)
             }
+
+            /*
+             * Actualización del progreso.
+             *
+             * 500 ms mantiene el contador fluido sin utilizar
+             * una frecuencia excesiva.
+             */
 
             LaunchedEffect(Unit) {
 
@@ -205,9 +281,11 @@ class MainActivity : ComponentActivity() {
             ) {
 
                 FullPlayerScreen(
-                    song = currentSong!!,
+                    song =
+                        currentSong!!,
 
-                    isPlaying = isPlaying,
+                    isPlaying =
+                        isPlaying,
 
                     currentPosition =
                         currentPosition,
@@ -227,7 +305,7 @@ class MainActivity : ComponentActivity() {
                         ),
 
                     queue =
-                        getCurrentQueue(),
+                        currentQueue,
 
                     onBack = {
                         showFullPlayer = false
@@ -247,7 +325,9 @@ class MainActivity : ComponentActivity() {
 
                     onSeek = { position ->
 
-                        controller?.seekTo(position)
+                        controller?.seekTo(
+                            position
+                        )
 
                         currentPosition =
                             position
@@ -268,10 +348,10 @@ class MainActivity : ComponentActivity() {
                         }
                     },
 
-                    onQueueSongClick = { song ->
+                    onQueueSongClick = { queueSong ->
 
                         playSongFromCurrentQueue(
-                            song
+                            queueSong
                         )
                     }
                 )
@@ -279,7 +359,8 @@ class MainActivity : ComponentActivity() {
             } else {
 
                 BlackWalkMusicScreen(
-                    songs = songs,
+                    songs =
+                        songs,
 
                     currentSong =
                         currentSong,
@@ -315,6 +396,7 @@ class MainActivity : ComponentActivity() {
                         if (
                             currentSong != null
                         ) {
+
                             showFullPlayer = true
                         }
                     },
@@ -332,9 +414,9 @@ class MainActivity : ComponentActivity() {
     }
 
     /*
-     * ========================================================
+     * ============================================================
      * MEDIA SESSION
-     * ========================================================
+     * ============================================================
      */
 
     private fun connectToMusicService() {
@@ -376,6 +458,8 @@ class MainActivity : ComponentActivity() {
 
                 updateCurrentSong()
 
+                updateCurrentQueue()
+
                 updateProgress()
 
             },
@@ -384,9 +468,9 @@ class MainActivity : ComponentActivity() {
     }
 
     /*
-     * ========================================================
+     * ============================================================
      * CURRENT SONG
-     * ========================================================
+     * ============================================================
      */
 
     private fun updateCurrentSong() {
@@ -413,9 +497,83 @@ class MainActivity : ComponentActivity() {
     }
 
     /*
-     * ========================================================
+     * ============================================================
+     * UPDATE QUEUE
+     *
+     * Esta función se llama únicamente cuando cambia realmente
+     * el contenido/orden de la cola.
+     *
+     * NO se ejecuta durante cada frame del scroll.
+     * ============================================================
+     */
+
+    private fun updateCurrentQueue() {
+
+        val mediaController =
+            controller
+
+        if (
+            mediaController == null ||
+            songs.isEmpty()
+        ) {
+
+            currentQueue =
+                emptyList()
+
+            return
+        }
+
+        val count =
+            mediaController.mediaItemCount
+
+        if (count <= 0) {
+
+            currentQueue =
+                emptyList()
+
+            return
+        }
+
+        /*
+         * Índice por URI.
+         *
+         * Evita hacer songs.find{} repetidamente.
+         */
+
+        val songsByUri =
+            songs.associateBy {
+                it.uri
+            }
+
+        val result =
+            ArrayList<Song>(count)
+
+        for (index in 0 until count) {
+
+            val uri =
+                mediaController
+                    .getMediaItemAt(index)
+                    .localConfiguration
+                    ?.uri
+                    ?.toString()
+                    ?: continue
+
+            val song =
+                songsByUri[uri]
+
+            if (song != null) {
+                result.add(song)
+            }
+        }
+
+        currentQueue =
+            result
+    }
+
+    /*
+     * ============================================================
      * PROGRESS
-     * ========================================================
+     * ============================================================
      */
 
     private fun updateProgress() {
@@ -437,9 +595,9 @@ class MainActivity : ComponentActivity() {
     }
 
     /*
-     * ========================================================
+     * ============================================================
      * PLAY SONG
-     * ========================================================
+     * ============================================================
      */
 
     private fun playSong(
@@ -479,15 +637,23 @@ class MainActivity : ComponentActivity() {
         currentSong =
             song
 
-        isPlaying = true
+        isPlaying =
+            true
 
-        shuffleEnabled = false
+        shuffleEnabled =
+            false
+
+        /*
+         * Actualizamos la cola una sola vez.
+         */
+
+        updateCurrentQueue()
     }
 
     /*
-     * ========================================================
-     * PLAY SONG FROM QUEUE
-     * ========================================================
+     * ============================================================
+     * PLAY SONG FROM CURRENT QUEUE
+     * ============================================================
      */
 
     private fun playSongFromCurrentQueue(
@@ -521,7 +687,8 @@ class MainActivity : ComponentActivity() {
                 currentSong =
                     song
 
-                isPlaying = true
+                isPlaying =
+                    true
 
                 return
             }
@@ -529,9 +696,9 @@ class MainActivity : ComponentActivity() {
     }
 
     /*
-     * ========================================================
+     * ============================================================
      * PLAY / PAUSE
-     * ========================================================
+     * ============================================================
      */
 
     private fun playPause() {
@@ -542,16 +709,19 @@ class MainActivity : ComponentActivity() {
         if (
             mediaController.isPlaying
         ) {
+
             mediaController.pause()
+
         } else {
+
             mediaController.play()
         }
     }
 
     /*
-     * ========================================================
+     * ============================================================
      * NEXT
-     * ========================================================
+     * ============================================================
      */
 
     private fun nextSong() {
@@ -570,9 +740,9 @@ class MainActivity : ComponentActivity() {
     }
 
     /*
-     * ========================================================
+     * ============================================================
      * PREVIOUS
-     * ========================================================
+     * ============================================================
      */
 
     private fun previousSong() {
@@ -602,9 +772,9 @@ class MainActivity : ComponentActivity() {
     }
 
     /*
-     * ========================================================
+     * ============================================================
      * SHUFFLE
-     * ========================================================
+     * ============================================================
      */
 
     private fun shuffleSongs() {
@@ -640,10 +810,20 @@ class MainActivity : ComponentActivity() {
         currentSong =
             shuffledSongs.firstOrNull()
 
-        isPlaying = true
+        isPlaying =
+            true
 
-        shuffleEnabled = true
+        shuffleEnabled =
+            true
+
+        updateCurrentQueue()
     }
+
+    /*
+     * ============================================================
+     * TOGGLE SHUFFLE
+     * ============================================================
+     */
 
     private fun toggleShuffle() {
 
@@ -655,12 +835,14 @@ class MainActivity : ComponentActivity() {
 
         shuffleEnabled =
             mediaController.shuffleModeEnabled
+
+        updateCurrentQueue()
     }
 
     /*
-     * ========================================================
+     * ============================================================
      * REPEAT
-     * ========================================================
+     * ============================================================
      */
 
     private fun toggleRepeat() {
@@ -691,9 +873,9 @@ class MainActivity : ComponentActivity() {
     }
 
     /*
-     * ========================================================
+     * ============================================================
      * FAVORITES
-     * ========================================================
+     * ============================================================
      */
 
     private fun toggleFavorite(
@@ -712,13 +894,12 @@ class MainActivity : ComponentActivity() {
     }
 
     /*
-     * ========================================================
-     * CURRENT QUEUE
+     * ============================================================
+     * LEGACY QUEUE FUNCTION
      *
-     * Optimizado:
-     * no usa detectVerticalDragGestures
-     * y no calcula el siguiente índice repetidamente.
-     * ========================================================
+     * Se conserva por compatibilidad, pero la interfaz ya no
+     * la llama durante las recomposiciones.
+     * ============================================================
      */
 
     private fun getCurrentQueue(): List<Song> {
@@ -729,32 +910,34 @@ class MainActivity : ComponentActivity() {
         val count =
             mediaController.mediaItemCount
 
-        if (count <= 0) {
+        if (
+            count <= 0 ||
+            songs.isEmpty()
+        ) {
+
             return emptyList()
         }
+
+        val songsByUri =
+            songs.associateBy {
+                it.uri
+            }
 
         val result =
             ArrayList<Song>(count)
 
         for (index in 0 until count) {
 
-            val mediaItem =
+            val uri =
                 mediaController
                     .getMediaItemAt(index)
-
-            val uri =
-                mediaItem
                     .localConfiguration
                     ?.uri
                     ?.toString()
+                    ?: continue
 
-            val song =
-                songs.find {
-                    it.uri == uri
-                }
-
-            if (song != null) {
-                result.add(song)
+            songsByUri[uri]?.let {
+                result.add(it)
             }
         }
 
@@ -762,9 +945,9 @@ class MainActivity : ComponentActivity() {
     }
 
     /*
-     * ========================================================
+     * ============================================================
      * PERMISSIONS
-     * ========================================================
+     * ============================================================
      */
 
     private fun requestMusicPermission() {
@@ -791,6 +974,12 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    /*
+     * ============================================================
+     * LOAD MUSIC
+     * ============================================================
+     */
+
     private fun loadMusic() {
 
         songs =
@@ -804,7 +993,15 @@ class MainActivity : ComponentActivity() {
             )
 
         updateCurrentSong()
+
+        updateCurrentQueue()
     }
+
+    /*
+     * ============================================================
+     * DESTROY
+     * ============================================================
+     */
 
     override fun onDestroy() {
 
@@ -1825,6 +2022,12 @@ fun GenericAlbumArt(
 /*
  * ============================================================
  * MINI PLAYER
+ *
+ * IMPORTANTE:
+ *
+ * Toda la tarjeta abre el reproductor únicamente al tocarla.
+ *
+ * No existe ningún gesto de arrastre.
  * ============================================================
  */
 
@@ -1943,7 +2146,7 @@ fun MiniPlayer(
 
                 Icon(
                     imageVector =
-                        Icons.Default.ExpandLess,
+                        Icons.Default.PlayArrow,
 
                     contentDescription =
                         "Abrir reproductor",
@@ -2032,6 +2235,13 @@ fun MiniPlayer(
  * ============================================================
  * REPRODUCTOR COMPLETO
  * ============================================================
+ *
+ * NO HAY SWIPE.
+ * NO HAY DRAG.
+ * NO HAY pointerInput.
+ *
+ * La reproducción actual solamente se abre tocando el botón.
+ * ============================================================
  */
 
 @Composable
@@ -2054,6 +2264,15 @@ fun FullPlayerScreen(
     onFavorite: () -> Unit,
     onQueueSongClick: (Song) -> Unit
 ) {
+
+    /*
+     * Estado local únicamente para cambiar entre:
+     *
+     * 1. Reproductor
+     * 2. Reproducción actual
+     *
+     * NO se modifica mediante gestos.
+     */
 
     var showQueue by remember {
         mutableStateOf(false)
@@ -2457,10 +2676,13 @@ fun FullPlayerScreen(
                 )
 
                 /*
-                 * BOTÓN DE REPRODUCCIÓN ACTUAL
+                 * =================================================
+                 * BOTÓN REPRODUCCIÓN ACTUAL
                  *
-                 * No usamos pointerInput.
-                 * La lista queda libre para hacer scroll.
+                 * SOLO CLICK.
+                 *
+                 * No se puede abrir deslizando.
+                 * =================================================
                  */
 
                 Surface(
@@ -2468,7 +2690,9 @@ fun FullPlayerScreen(
                         Modifier
                             .fillMaxWidth()
                             .clickable {
-                                showQueue = true
+
+                                showQueue =
+                                    true
                             },
 
                     color =
@@ -2542,15 +2766,18 @@ fun FullPlayerScreen(
                             )
                         }
 
-                        Icon(
-                            imageVector =
-                                Icons.Default.ExpandLess,
+                        Text(
+                            text =
+                                "ABRIR",
 
-                            contentDescription =
-                                null,
+                            color =
+                                TextWhite,
 
-                            tint =
-                                TextGray
+                            fontSize =
+                                10.sp,
+
+                            fontWeight =
+                                FontWeight.Bold
                         )
                     }
                 }
@@ -2594,7 +2821,9 @@ fun FullPlayerScreen(
 
                     IconButton(
                         onClick = {
-                            showQueue = false
+
+                            showQueue =
+                                false
                         }
                     ) {
 
@@ -2724,10 +2953,18 @@ fun FullPlayerScreen(
                 } else {
 
                     /*
-                     * IMPORTANTE:
+                     * =================================================
+                     * LISTA DE REPRODUCCIÓN
                      *
-                     * LazyColumn queda completamente libre.
-                     * No hay pointerInput encima de ella.
+                     * LazyColumn normal.
+                     *
+                     * NO pointerInput.
+                     * NO detectVerticalDragGestures.
+                     * NO draggable.
+                     * NO swipe.
+                     *
+                     * El usuario puede desplazarse normalmente.
+                     * =================================================
                      */
 
                     LazyColumn(
@@ -2836,20 +3073,22 @@ fun FullPlayerScreen(
                                     isCurrent
                                 ) {
 
-                                    Text(
-                                        text =
-                                            "▶",
+                                    Icon(
+                                        imageVector =
+                                            Icons.Default.PlayArrow,
 
-                                        color =
+                                        contentDescription =
+                                            "Reproduciendo",
+
+                                        tint =
                                             ParaguayWhite,
 
-                                        fontSize =
-                                            14.sp,
-
                                         modifier =
-                                            Modifier.padding(
-                                                end = 8.dp
-                                            )
+                                            Modifier
+                                                .size(22.dp)
+                                                .padding(
+                                                    end = 2.dp
+                                                )
                                     )
                                 }
                             }
