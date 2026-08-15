@@ -1,80 +1,61 @@
 package com.blackwalkmusic
 
 import android.content.ComponentName
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import coil.compose.SubcomposeAsyncImage
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.delay
-
-private val AmoledBlack = Color(0xFF000000)
-private val AmoledSurface = Color(0xFF080808)
-private val AmoledSurface2 = Color(0xFF101010)
-private val TextWhite = Color(0xFFF2F2F2)
-private val TextGray = Color(0xFF8C8C8C)
-private val TextGrayDark = Color(0xFF555555)
-private val ParaguayRed = Color(0xFFD90012)
-private val ParaguayWhite = Color(0xFFF5F5F5)
-private val ParaguayBlue = Color(0xFF0038A8)
-private val BorderGray = Color(0xFF222222)
-
-private enum class SongSort {
-    TITLE,
-    ARTIST,
-    ALBUM,
-    DURATION,
-    NEWEST,
-    OLDEST
-}
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var controllerFuture: ListenableFuture<MediaController>
+
     private var controller: MediaController? = null
 
     private var songs by mutableStateOf<List<Song>>(emptyList())
+
+    /*
+     * ESTA ES LA ÚNICA FUENTE DE VERDAD
+     * PARA LA CANCIÓN QUE ESTÁ SONANDO.
+     */
     private var currentSong by mutableStateOf<Song?>(null)
 
-    // ÚNICA cola cacheada.
-    // NO existe getCurrentQueue().
+    /*
+     * Cola visual sincronizada con Media3.
+     *
+     * IMPORTANTE:
+     * NO existe getCurrentQueue().
+     * Así evitamos el conflicto JVM que apareció antes.
+     */
     private var currentQueue by mutableStateOf<List<Song>>(emptyList())
 
     private var isPlaying by mutableStateOf(false)
+
     private var currentPosition by mutableLongStateOf(0L)
+
     private var duration by mutableLongStateOf(0L)
-    private var repeatMode by mutableIntStateOf(Player.REPEAT_MODE_OFF)
+
+    private var repeatMode by mutableIntStateOf(
+        Player.REPEAT_MODE_OFF
+    )
+
     private var shuffleEnabled by mutableStateOf(false)
+
     private var favoriteIds by mutableStateOf<Set<Long>>(emptySet())
+
+    /*
+     * ============================================================
+     * PERMISOS
+     * ============================================================
+     */
 
     private val permissionLauncher =
         registerForActivityResult(
@@ -83,49 +64,95 @@ class MainActivity : ComponentActivity() {
             loadMusic()
         }
 
-    private val playerListener = object : Player.Listener {
+    /*
+     * ============================================================
+     * PLAYER LISTENER
+     * ============================================================
+     *
+     * Media3 informa aquí cuando realmente cambia el elemento
+     * que está siendo reproducido.
+     *
+     * Esto es especialmente importante con Shuffle.
+     */
+    private val playerListener =
+        object : Player.Listener {
 
-        override fun onIsPlayingChanged(isPlayingNow: Boolean) {
-            isPlaying = isPlayingNow
+            override fun onIsPlayingChanged(
+                isPlayingNow: Boolean
+            ) {
+                isPlaying = isPlayingNow
+            }
+
+            override fun onMediaItemTransition(
+                mediaItem: MediaItem?,
+                reason: Int
+            ) {
+                /*
+                 * Este es el punto principal.
+                 *
+                 * La canción actual se obtiene directamente
+                 * del MediaController.
+                 */
+                syncPlayerState()
+            }
+
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+            ) {
+                /*
+                 * Se ejecuta al hacer seek, siguiente,
+                 * anterior, transición automática, etc.
+                 */
+                syncPlayerState()
+            }
+
+            override fun onTimelineChanged(
+                timeline: androidx.media3.common.Timeline,
+                reason: Int
+            ) {
+                syncPlayerState()
+            }
+
+            override fun onPlaybackStateChanged(
+                playbackState: Int
+            ) {
+                updateProgress()
+            }
+
+            override fun onRepeatModeChanged(
+                mode: Int
+            ) {
+                repeatMode = mode
+            }
+
+            override fun onShuffleModeEnabledChanged(
+                shuffleModeEnabledNow: Boolean
+            ) {
+                shuffleEnabled = shuffleModeEnabledNow
+
+                /*
+                 * Al activar/desactivar Shuffle cambia la
+                 * navegación de la cola.
+                 */
+                updateCurrentQueue()
+            }
         }
 
-        override fun onMediaItemTransition(
-            mediaItem: MediaItem?,
-            reason: Int
-        ) {
-            updateCurrentSong()
-            updateCurrentQueue()
-            updateProgress()
-        }
+    /*
+     * ============================================================
+     * ON CREATE
+     * ============================================================
+     */
 
-        override fun onPlaybackStateChanged(playbackState: Int) {
-            updateProgress()
-        }
-
-        override fun onRepeatModeChanged(mode: Int) {
-            repeatMode = mode
-        }
-
-        override fun onShuffleModeEnabledChanged(
-            shuffleModeEnabled: Boolean
-        ) {
-            shuffleEnabled = shuffleModeEnabled
-            updateCurrentQueue()
-        }
-
-        override fun onTimelineChanged(
-            timeline: androidx.media3.common.Timeline,
-            reason: Int
-        ) {
-            updateCurrentSong()
-            updateCurrentQueue()
-        }
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
         super.onCreate(savedInstanceState)
 
-        favoriteIds = FavoritesManager.getFavorites(this)
+        favoriteIds =
+            FavoritesManager.getFavorites(this)
 
         setContent {
 
@@ -133,23 +160,46 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(false)
             }
 
+            /*
+             * Actualización ligera del progreso.
+             *
+             * 500 ms es suficiente para que el slider y el
+             * contador se vean fluidos sin hacer trabajo
+             * excesivo en equipos modestos.
+             */
             LaunchedEffect(Unit) {
+
                 while (true) {
+
                     updateProgress()
+
                     delay(500)
                 }
             }
 
-            if (showFullPlayer && currentSong != null) {
+            if (
+                showFullPlayer &&
+                currentSong != null
+            ) {
 
                 FullPlayerScreen(
                     song = currentSong!!,
+
                     isPlaying = isPlaying,
+
                     currentPosition = currentPosition,
+
                     duration = duration,
+
                     repeatMode = repeatMode,
+
                     shuffleEnabled = shuffleEnabled,
-                    isFavorite = favoriteIds.contains(currentSong!!.id),
+
+                    isFavorite =
+                        favoriteIds.contains(
+                            currentSong!!.id
+                        ),
+
                     queue = currentQueue,
 
                     onBack = {
@@ -169,8 +219,10 @@ class MainActivity : ComponentActivity() {
                     },
 
                     onSeek = { position ->
+
                         controller?.seekTo(position)
-                        currentPosition = position
+
+                        updateProgress()
                     },
 
                     onShuffle = {
@@ -182,13 +234,17 @@ class MainActivity : ComponentActivity() {
                     },
 
                     onFavorite = {
+
                         currentSong?.let {
                             toggleFavorite(it)
                         }
                     },
 
-                    onQueueSongClick = {
-                        playSongFromCurrentQueue(it)
+                    onQueueSongClick = { queueSong ->
+
+                        playSongFromCurrentQueue(
+                            queueSong
+                        )
                     }
                 )
 
@@ -196,8 +252,11 @@ class MainActivity : ComponentActivity() {
 
                 BlackWalkMusicScreen(
                     songs = songs,
+
                     currentSong = currentSong,
+
                     isPlaying = isPlaying,
+
                     favoriteIds = favoriteIds,
 
                     onSongClick = {
@@ -221,6 +280,7 @@ class MainActivity : ComponentActivity() {
                     },
 
                     onOpenPlayer = {
+
                         if (currentSong != null) {
                             showFullPlayer = true
                         }
@@ -234,18 +294,26 @@ class MainActivity : ComponentActivity() {
         }
 
         requestMusicPermission()
+
         connectToMusicService()
     }
 
+    /*
+     * ============================================================
+     * MEDIA CONTROLLER
+     * ============================================================
+     */
+
     private fun connectToMusicService() {
 
-        val sessionToken = SessionToken(
-            this,
-            ComponentName(
+        val sessionToken =
+            SessionToken(
                 this,
-                MusicService::class.java
+                ComponentName(
+                    this,
+                    MusicService::class.java
+                )
             )
-        )
 
         controllerFuture =
             MediaController.Builder(
@@ -255,78 +323,160 @@ class MainActivity : ComponentActivity() {
 
         controllerFuture.addListener(
             {
-                controller = controllerFuture.get()
+
+                controller =
+                    controllerFuture.get()
 
                 controller?.addListener(
                     playerListener
                 )
 
-                controller?.let {
-                    isPlaying = it.isPlaying
-                    repeatMode = it.repeatMode
-                    shuffleEnabled = it.shuffleModeEnabled
-                }
+                syncPlayerState()
 
-                updateCurrentSong()
-                updateCurrentQueue()
-                updateProgress()
             },
             ContextCompat.getMainExecutor(this)
         )
     }
 
-    private fun updateCurrentSong() {
+    /*
+     * ============================================================
+     * SINCRONIZACIÓN CENTRAL
+     * ============================================================
+     *
+     * TODAS las modificaciones importantes del reproductor
+     * pasan por aquí.
+     *
+     * Esto evita que:
+     *
+     * - currentSong diga una canción
+     * - Media3 reproduzca otra
+     * - la cola muestre otra
+     *
+     * Todo se actualiza desde el MediaController real.
+     */
 
-        val player = controller ?: return
+    private fun syncPlayerState() {
 
-        val uri = player.currentMediaItem
-            ?.localConfiguration
-            ?.uri
-            ?.toString()
+        val mediaController =
+            controller ?: return
 
-        currentSong = songs.find {
-            it.uri == uri
+        /*
+         * Estado de reproducción.
+         */
+        isPlaying =
+            mediaController.isPlaying
+
+        /*
+         * Modos.
+         */
+        repeatMode =
+            mediaController.repeatMode
+
+        shuffleEnabled =
+            mediaController.shuffleModeEnabled
+
+        /*
+         * Canción realmente reproducida.
+         */
+        val mediaItem =
+            mediaController.currentMediaItem
+
+        val currentUri =
+            mediaItem
+                ?.localConfiguration
+                ?.uri
+                ?.toString()
+
+        val newSong =
+            songs.firstOrNull {
+                it.uri == currentUri
+            }
+
+        /*
+         * IMPORTANTE:
+         *
+         * Actualizamos currentSong incluso cuando cambia
+         * automáticamente por transición.
+         */
+        if (newSong?.id != currentSong?.id) {
+
+            currentSong = newSong
         }
 
-        isPlaying = player.isPlaying
+        /*
+         * Cola.
+         */
+        updateCurrentQueue()
+
+        /*
+         * Tiempo.
+         */
+        updateProgress()
     }
 
     /*
-     * ESTA ES LA ÚNICA FUNCIÓN PARA ACTUALIZAR LA COLA.
+     * ============================================================
+     * COLA ACTUAL
+     * ============================================================
      *
-     * IMPORTANTE:
-     * NO crear getCurrentQueue().
+     * No existe getCurrentQueue().
+     *
+     * La lista se construye únicamente desde los MediaItems
+     * que realmente tiene Media3.
      */
+
     private fun updateCurrentQueue() {
 
-        val player = controller
+        val mediaController =
+            controller ?: return
 
-        if (player == null || songs.isEmpty()) {
+        if (songs.isEmpty()) {
+
             currentQueue = emptyList()
+
             return
         }
 
-        val count = player.mediaItemCount
+        val count =
+            mediaController.mediaItemCount
 
         if (count <= 0) {
+
             currentQueue = emptyList()
+
             return
         }
 
-        val songsByUri = songs.associateBy {
-            it.uri
-        }
+        /*
+         * Índice rápido URI -> Song.
+         */
+        val songsByUri =
+            songs.associateBy {
+                it.uri
+            }
 
-        val result = ArrayList<Song>(count)
+        val result =
+            ArrayList<Song>(count)
 
+        /*
+         * IMPORTANTE:
+         *
+         * Aquí usamos el orden real de la playlist que
+         * mantiene Media3.
+         *
+         * No intentamos crear nuestro propio shuffle.
+         */
         for (index in 0 until count) {
 
-            val uri = player
-                .getMediaItemAt(index)
-                .localConfiguration
-                ?.uri
-                ?.toString()
-                ?: continue
+            val mediaItem =
+                mediaController.getMediaItemAt(index)
+
+            val uri =
+                mediaItem
+                    .localConfiguration
+                    ?.uri
+                    ?.toString()
+                    ?: continue
 
             songsByUri[uri]?.let {
                 result.add(it)
@@ -336,162 +486,353 @@ class MainActivity : ComponentActivity() {
         currentQueue = result
     }
 
+    /*
+     * ============================================================
+     * PROGRESO
+     * ============================================================
+     */
+
     private fun updateProgress() {
 
-        val player = controller ?: return
+        val mediaController =
+            controller ?: return
 
         currentPosition =
-            player.currentPosition.coerceAtLeast(0L)
+            mediaController.currentPosition
+                .coerceAtLeast(0L)
 
         duration =
-            player.duration
-                .takeIf { it > 0L }
+            mediaController.duration
+                .takeIf {
+                    it > 0L
+                }
                 ?: currentSong?.duration
                 ?: 0L
     }
 
-    private fun playSong(song: Song) {
+    /*
+     * ============================================================
+     * REPRODUCIR UNA CANCIÓN
+     * ============================================================
+     */
 
-        val player = controller ?: return
+    private fun playSong(
+        song: Song
+    ) {
 
-        if (songs.isEmpty()) return
+        val mediaController =
+            controller ?: return
 
-        val mediaItems = songs.map {
-            MediaItem.fromUri(it.uri)
+        if (songs.isEmpty()) {
+            return
         }
 
-        val index = songs.indexOfFirst {
-            it.uri == song.uri
-        }.coerceAtLeast(0)
+        val mediaItems =
+            songs.map {
+                MediaItem.fromUri(it.uri)
+            }
 
-        player.setMediaItems(
+        val startIndex =
+            songs.indexOfFirst {
+                it.uri == song.uri
+            }.coerceAtLeast(0)
+
+        /*
+         * Playlist normal.
+         */
+        mediaController.setMediaItems(
             mediaItems,
-            index,
+            startIndex,
             0L
         )
 
-        player.shuffleModeEnabled = false
-        player.prepare()
-        player.play()
+        /*
+         * Al seleccionar una canción manualmente,
+         * comenzamos sin shuffle.
+         *
+         * El usuario puede activarlo después.
+         */
+        mediaController.shuffleModeEnabled =
+            false
 
-        currentSong = song
-        isPlaying = true
-        shuffleEnabled = false
+        mediaController.prepare()
 
-        updateCurrentQueue()
+        mediaController.play()
+
+        /*
+         * Sincronización inmediata.
+         *
+         * No esperamos al siguiente frame.
+         */
+        syncPlayerState()
     }
 
-    private fun playSongFromCurrentQueue(song: Song) {
+    /*
+     * ============================================================
+     * REPRODUCIR DESDE COLA
+     * ============================================================
+     */
 
-        val player = controller ?: return
+    private fun playSongFromCurrentQueue(
+        song: Song
+    ) {
 
-        for (index in 0 until player.mediaItemCount) {
+        val mediaController =
+            controller ?: return
 
-            val uri = player
-                .getMediaItemAt(index)
-                .localConfiguration
-                ?.uri
-                ?.toString()
+        val count =
+            mediaController.mediaItemCount
+
+        if (count <= 0) {
+            return
+        }
+
+        /*
+         * Buscamos la canción dentro de la playlist REAL
+         * de Media3.
+         */
+        for (index in 0 until count) {
+
+            val mediaItem =
+                mediaController.getMediaItemAt(index)
+
+            val uri =
+                mediaItem
+                    .localConfiguration
+                    ?.uri
+                    ?.toString()
 
             if (uri == song.uri) {
 
-                player.seekTo(
+                mediaController.seekTo(
                     index,
                     0L
                 )
 
-                player.play()
+                mediaController.play()
 
-                currentSong = song
-                isPlaying = true
+                /*
+                 * Actualización inmediata.
+                 */
+                syncPlayerState()
 
                 return
             }
         }
     }
 
+    /*
+     * ============================================================
+     * PLAY / PAUSE
+     * ============================================================
+     */
+
     private fun playPause() {
 
-        val player = controller ?: return
+        val mediaController =
+            controller ?: return
 
-        if (player.isPlaying) {
-            player.pause()
+        if (mediaController.isPlaying) {
+
+            mediaController.pause()
+
         } else {
-            player.play()
+
+            mediaController.play()
         }
+
+        /*
+         * Reflejar inmediatamente el estado.
+         */
+        isPlaying =
+            mediaController.isPlaying
     }
+
+    /*
+     * ============================================================
+     * SIGUIENTE
+     * ============================================================
+     *
+     * Media3 decide automáticamente cuál es el siguiente
+     * elemento cuando Shuffle está activo.
+     */
 
     private fun nextSong() {
 
-        val player = controller ?: return
+        val mediaController =
+            controller ?: return
 
-        if (player.hasNextMediaItem()) {
-            player.seekToNextMediaItem()
-            player.play()
+        if (
+            mediaController.hasNextMediaItem()
+        ) {
+
+            mediaController.seekToNextMediaItem()
+
+            mediaController.play()
+
+        } else if (
+            mediaController.repeatMode ==
+            Player.REPEAT_MODE_ALL
+        ) {
+
+            /*
+             * Media3 normalmente gestiona esto,
+             * pero mantenemos una protección.
+             */
+            mediaController.seekToNextMediaItem()
+
+            mediaController.play()
         }
+
+        /*
+         * La transición real volverá a llamar
+         * onMediaItemTransition().
+         */
+        syncPlayerState()
     }
+
+    /*
+     * ============================================================
+     * ANTERIOR
+     * ============================================================
+     */
 
     private fun previousSong() {
 
-        val player = controller ?: return
+        val mediaController =
+            controller ?: return
 
-        if (player.currentPosition > 3000L) {
-            player.seekTo(0L)
+        /*
+         * Si llevamos más de 3 segundos,
+         * volvemos al inicio de la canción.
+         */
+        if (
+            mediaController.currentPosition >
+            3000L
+        ) {
+
+            mediaController.seekTo(0L)
+
+            syncPlayerState()
+
             return
         }
 
-        if (player.hasPreviousMediaItem()) {
-            player.seekToPreviousMediaItem()
-            player.play()
+        if (
+            mediaController.hasPreviousMediaItem()
+        ) {
+
+            mediaController.seekToPreviousMediaItem()
+
+            mediaController.play()
         }
+
+        syncPlayerState()
     }
+
+    /*
+     * ============================================================
+     * SHUFFLE
+     * ============================================================
+     *
+     * IMPORTANTE:
+     *
+     * Ya NO reconstruimos la playlist con songs.shuffled().
+     *
+     * Media3 ya posee un ShuffleOrder propio.
+     *
+     * Esto evita que la cola visual se desincronice.
+     */
 
     private fun shuffleSongs() {
 
-        val player = controller ?: return
+        val mediaController =
+            controller ?: return
 
-        if (songs.isEmpty()) return
+        if (songs.isEmpty()) {
+            return
+        }
 
-        val shuffled = songs.shuffled()
+        /*
+         * Si no existe una playlist,
+         * creamos una normal.
+         */
+        if (
+            mediaController.mediaItemCount <= 0
+        ) {
 
-        player.setMediaItems(
-            shuffled.map {
-                MediaItem.fromUri(it.uri)
-            },
-            0,
-            0L
-        )
+            val mediaItems =
+                songs.map {
+                    MediaItem.fromUri(it.uri)
+                }
 
-        player.shuffleModeEnabled = true
-        player.prepare()
-        player.play()
+            mediaController.setMediaItems(
+                mediaItems,
+                0,
+                0L
+            )
 
-        currentSong = shuffled.firstOrNull()
-        isPlaying = true
+            mediaController.prepare()
+        }
+
+        /*
+         * Activamos el shuffle nativo de Media3.
+         */
+        mediaController.shuffleModeEnabled =
+            true
+
         shuffleEnabled = true
 
-        updateCurrentQueue()
+        mediaController.play()
+
+        syncPlayerState()
     }
+
+    /*
+     * ============================================================
+     * TOGGLE SHUFFLE
+     * ============================================================
+     */
 
     private fun toggleShuffle() {
 
-        val player = controller ?: return
+        val mediaController =
+            controller ?: return
 
-        player.shuffleModeEnabled =
-            !player.shuffleModeEnabled
+        val newValue =
+            !mediaController.shuffleModeEnabled
 
-        shuffleEnabled =
-            player.shuffleModeEnabled
+        mediaController.shuffleModeEnabled =
+            newValue
 
+        shuffleEnabled = newValue
+
+        /*
+         * No modificamos la playlist.
+         *
+         * Media3 conserva el elemento actual y cambia
+         * solamente la navegación aleatoria.
+         */
         updateCurrentQueue()
+
+        syncPlayerState()
     }
+
+    /*
+     * ============================================================
+     * REPEAT
+     * ============================================================
+     */
 
     private fun toggleRepeat() {
 
-        val player = controller ?: return
+        val mediaController =
+            controller ?: return
 
         val newMode =
-            when (player.repeatMode) {
+            when (
+                mediaController.repeatMode
+            ) {
 
                 Player.REPEAT_MODE_OFF ->
                     Player.REPEAT_MODE_ALL
@@ -503,11 +844,22 @@ class MainActivity : ComponentActivity() {
                     Player.REPEAT_MODE_OFF
             }
 
-        player.repeatMode = newMode
-        repeatMode = newMode
+        mediaController.repeatMode =
+            newMode
+
+        repeatMode =
+            newMode
     }
 
-    private fun toggleFavorite(song: Song) {
+    /*
+     * ============================================================
+     * FAVORITOS
+     * ============================================================
+     */
+
+    private fun toggleFavorite(
+        song: Song
+    ) {
 
         FavoritesManager.toggleFavorite(
             this,
@@ -515,13 +867,23 @@ class MainActivity : ComponentActivity() {
         )
 
         favoriteIds =
-            FavoritesManager.getFavorites(this)
+            FavoritesManager.getFavorites(
+                this
+            )
     }
+
+    /*
+     * ============================================================
+     * PERMISOS
+     * ============================================================
+     */
 
     private fun requestMusicPermission() {
 
         val permissions =
-            if (Build.VERSION.SDK_INT >= 33) {
+            if (
+                android.os.Build.VERSION.SDK_INT >= 33
+            ) {
 
                 arrayOf(
                     android.Manifest.permission.READ_MEDIA_AUDIO,
@@ -540,6 +902,12 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    /*
+     * ============================================================
+     * CARGAR MÚSICA
+     * ============================================================
+     */
+
     private fun loadMusic() {
 
         songs =
@@ -548,11 +916,23 @@ class MainActivity : ComponentActivity() {
             )
 
         favoriteIds =
-            FavoritesManager.getFavorites(this)
+            FavoritesManager.getFavorites(
+                this
+            )
 
-        updateCurrentSong()
-        updateCurrentQueue()
+        /*
+         * Si el MediaController ya está conectado,
+         * intentamos recuperar inmediatamente la canción
+         * que estaba reproduciendo.
+         */
+        syncPlayerState()
     }
+
+    /*
+     * ============================================================
+     * DESTROY
+     * ============================================================
+     */
 
     override fun onDestroy() {
 
@@ -560,7 +940,10 @@ class MainActivity : ComponentActivity() {
             playerListener
         )
 
-        if (::controllerFuture.isInitialized) {
+        if (
+            ::controllerFuture.isInitialized
+        ) {
+
             MediaController.releaseFuture(
                 controllerFuture
             )
@@ -570,1308 +953,4 @@ class MainActivity : ComponentActivity() {
 
         super.onDestroy()
     }
-}
-
-/* ============================================================
-   MARCA
-   ============================================================ */
-
-@Composable
-fun TerereBrand(
-    modifier: Modifier = Modifier
-) {
-
-    Column(modifier) {
-
-        Text(
-            "TERERÉ",
-            color = ParaguayRed,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp
-        )
-
-        Text(
-            "MUSIC",
-            color = ParaguayWhite,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp,
-            modifier = Modifier.padding(start = 18.dp)
-        )
-
-        Text(
-            "PY",
-            color = ParaguayBlue,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp,
-            modifier = Modifier.padding(start = 48.dp)
-        )
-
-        Spacer(Modifier.height(5.dp))
-
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-        ) {
-
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(ParaguayRed)
-            )
-
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(ParaguayWhite)
-            )
-
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(ParaguayBlue)
-            )
-        }
-    }
-}
-
-/* ============================================================
-   PANTALLA PRINCIPAL
-   ============================================================ */
-
-@Composable
-fun BlackWalkMusicScreen(
-    songs: List<Song>,
-    currentSong: Song?,
-    isPlaying: Boolean,
-    favoriteIds: Set<Long>,
-    onSongClick: (Song) -> Unit,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onShuffle: () -> Unit,
-    onOpenPlayer: () -> Unit,
-    onFavorite: (Song) -> Unit
-) {
-
-    var search by remember {
-        mutableStateOf("")
-    }
-
-    var sort by remember {
-        mutableStateOf(SongSort.TITLE)
-    }
-
-    var favoritesOnly by remember {
-        mutableStateOf(false)
-    }
-
-    var sortMenu by remember {
-        mutableStateOf(false)
-    }
-
-    val filteredSongs = remember(
-        songs,
-        search,
-        sort,
-        favoritesOnly,
-        favoriteIds
-    ) {
-
-        val query = search.trim()
-
-        val result = songs.filter { song ->
-
-            val matchesSearch =
-                query.isEmpty() ||
-                    song.title.contains(
-                        query,
-                        true
-                    ) ||
-                    song.artist.contains(
-                        query,
-                        true
-                    ) ||
-                    song.album.contains(
-                        query,
-                        true
-                    )
-
-            val matchesFavorite =
-                !favoritesOnly ||
-                    favoriteIds.contains(song.id)
-
-            matchesSearch && matchesFavorite
-        }
-
-        when (sort) {
-
-            SongSort.TITLE ->
-                result.sortedBy {
-                    it.title.lowercase()
-                }
-
-            SongSort.ARTIST ->
-                result.sortedBy {
-                    it.artist.lowercase()
-                }
-
-            SongSort.ALBUM ->
-                result.sortedBy {
-                    it.album.lowercase()
-                }
-
-            SongSort.DURATION ->
-                result.sortedByDescending {
-                    it.duration
-                }
-
-            SongSort.NEWEST ->
-                result.sortedByDescending {
-                    it.dateAdded
-                }
-
-            SongSort.OLDEST ->
-                result.sortedBy {
-                    it.dateAdded
-                }
-        }
-    }
-
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            background = AmoledBlack,
-            surface = AmoledSurface,
-            primary = ParaguayWhite,
-            onPrimary = Color.Black
-        )
-    ) {
-
-        Surface(
-            Modifier.fillMaxSize(),
-            color = AmoledBlack
-        ) {
-
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(18.dp)
-            ) {
-
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    TerereBrand(
-                        Modifier.weight(1f)
-                    )
-
-                    IconButton(onClick = onShuffle) {
-                        Icon(
-                            Icons.Default.Shuffle,
-                            "Aleatorio",
-                            tint = ParaguayWhite
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = {
-                        search = it
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            null,
-                            tint = ParaguayWhite
-                        )
-                    },
-                    trailingIcon = {
-                        if (search.isNotEmpty()) {
-                            IconButton(
-                                onClick = {
-                                    search = ""
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.Clear,
-                                    "Limpiar",
-                                    tint = TextGray
-                                )
-                            }
-                        }
-                    },
-                    placeholder = {
-                        Text(
-                            "Buscar canción, artista o álbum",
-                            color = TextGray
-                        )
-                    },
-                    colors =
-                        OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextWhite,
-                            unfocusedTextColor = TextWhite,
-                            focusedBorderColor = ParaguayWhite,
-                            unfocusedBorderColor = BorderGray,
-                            cursorColor = ParaguayWhite
-                        ),
-                    shape = RoundedCornerShape(14.dp)
-                )
-
-                Spacer(Modifier.height(14.dp))
-
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Column(
-                        Modifier.weight(1f)
-                    ) {
-
-                        Text(
-                            if (favoritesOnly)
-                                "FAVORITOS"
-                            else
-                                "BIBLIOTECA",
-                            color = TextWhite,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            "${filteredSongs.size} canciones",
-                            color = TextGray,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    IconButton(
-                        onClick = {
-                            favoritesOnly =
-                                !favoritesOnly
-                        }
-                    ) {
-
-                        Icon(
-                            if (favoritesOnly)
-                                Icons.Default.Favorite
-                            else
-                                Icons.Default.FavoriteBorder,
-                            "Favoritos",
-                            tint =
-                                if (favoritesOnly)
-                                    ParaguayRed
-                                else
-                                    TextGray
-                        )
-                    }
-
-                    Box {
-
-                        IconButton(
-                            onClick = {
-                                sortMenu = true
-                            }
-                        ) {
-                            Icon(
-                                Icons.Default.Sort,
-                                "Ordenar",
-                                tint = TextWhite
-                            )
-                        }
-
-                        DropdownMenu(
-                            expanded = sortMenu,
-                            onDismissRequest = {
-                                sortMenu = false
-                            },
-                            containerColor = AmoledSurface
-                        ) {
-
-                            SortItem(
-                                "Más recientes",
-                                SongSort.NEWEST
-                            ) {
-                                sort = it
-                                sortMenu = false
-                            }
-
-                            SortItem(
-                                "Más antiguas",
-                                SongSort.OLDEST
-                            ) {
-                                sort = it
-                                sortMenu = false
-                            }
-
-                            SortItem(
-                                "Título",
-                                SongSort.TITLE
-                            ) {
-                                sort = it
-                                sortMenu = false
-                            }
-
-                            SortItem(
-                                "Artista",
-                                SongSort.ARTIST
-                            ) {
-                                sort = it
-                                sortMenu = false
-                            }
-
-                            SortItem(
-                                "Álbum",
-                                SongSort.ALBUM
-                            ) {
-                                sort = it
-                                sortMenu = false
-                            }
-
-                            SortItem(
-                                "Duración",
-                                SongSort.DURATION
-                            ) {
-                                sort = it
-                                sortMenu = false
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(6.dp))
-
-                if (filteredSongs.isEmpty()) {
-
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-
-                        Column(
-                            horizontalAlignment =
-                                Alignment.CenterHorizontally
-                        ) {
-
-                            GenericAlbumArt(80.dp)
-
-                            Spacer(Modifier.height(14.dp))
-
-                            Text(
-                                if (favoritesOnly)
-                                    "NO HAY FAVORITOS"
-                                else
-                                    "NO SE ENCONTRARON CANCIONES",
-                                color = TextGray,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-
-                } else {
-
-                    LazyColumn(
-                        Modifier.weight(1f),
-                        contentPadding =
-                            PaddingValues(bottom = 8.dp)
-                    ) {
-
-                        items(
-                            filteredSongs,
-                            key = { it.id }
-                        ) { song ->
-
-                            SongItem(
-                                song = song,
-                                isCurrent =
-                                    currentSong?.id == song.id,
-                                isFavorite =
-                                    favoriteIds.contains(song.id),
-                                onClick = {
-                                    onSongClick(song)
-                                },
-                                onFavorite = {
-                                    onFavorite(song)
-                                }
-                            )
-                        }
-                    }
-                }
-
-                currentSong?.let { song ->
-
-                    MiniPlayer(
-                        song = song,
-                        isPlaying = isPlaying,
-                        isFavorite =
-                            favoriteIds.contains(song.id),
-                        onPlayPause = onPlayPause,
-                        onNext = onNext,
-                        onPrevious = onPrevious,
-                        onOpenPlayer = onOpenPlayer,
-                        onFavorite = {
-                            onFavorite(song)
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SortItem(
-    text: String,
-    mode: SongSort,
-    onSelected: (SongSort) -> Unit
-) {
-
-    DropdownMenuItem(
-        text = {
-            Text(
-                text,
-                color = TextWhite
-            )
-        },
-        onClick = {
-            onSelected(mode)
-        }
-    )
-}
-
-/* ============================================================
-   SONG ITEM
-   ============================================================ */
-
-@Composable
-fun SongItem(
-    song: Song,
-    isCurrent: Boolean,
-    isFavorite: Boolean,
-    onClick: () -> Unit,
-    onFavorite: () -> Unit
-) {
-
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        AlbumArt(
-            song = song,
-            size = 56.dp
-        )
-
-        Spacer(Modifier.width(13.dp))
-
-        Column(
-            Modifier.weight(1f)
-        ) {
-
-            Text(
-                song.title,
-                color = TextWhite,
-                fontSize = 16.sp,
-                fontWeight =
-                    if (isCurrent)
-                        FontWeight.Bold
-                    else
-                        FontWeight.Normal,
-                maxLines = 2
-            )
-
-            Text(
-                song.artist,
-                color = TextGray,
-                fontSize = 13.sp,
-                maxLines = 1
-            )
-
-            if (song.album.isNotBlank()) {
-
-                Text(
-                    song.album,
-                    color = TextGrayDark,
-                    fontSize = 11.sp,
-                    maxLines = 1
-                )
-            }
-        }
-
-        IconButton(onClick = onFavorite) {
-
-            Icon(
-                if (isFavorite)
-                    Icons.Default.Favorite
-                else
-                    Icons.Default.FavoriteBorder,
-                "Favorito",
-                tint =
-                    if (isFavorite)
-                        ParaguayRed
-                    else
-                        TextGray
-            )
-        }
-
-        if (isCurrent) {
-
-            Box(
-                Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(ParaguayWhite)
-            )
-        }
-    }
-}
-
-/* ============================================================
-   ALBUM ART
-   ============================================================ */
-
-@Composable
-fun AlbumArt(
-    song: Song,
-    size: Dp,
-    modifier: Modifier = Modifier
-) {
-
-    val uri =
-        "content://media/external/audio/albumart/${song.albumId}"
-
-    Box(
-        modifier
-            .size(size)
-            .clip(RoundedCornerShape(10.dp))
-            .background(AmoledSurface2)
-            .border(
-                1.dp,
-                BorderGray,
-                RoundedCornerShape(10.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-
-        SubcomposeAsyncImage(
-            model = uri,
-            contentDescription =
-                "Carátula de ${song.album}",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            loading = {
-                GenericAlbumArt(size)
-            },
-            error = {
-                GenericAlbumArt(size)
-            }
-        )
-    }
-}
-
-@Composable
-fun GenericAlbumArt(
-    size: Dp
-) {
-
-    Box(
-        Modifier
-            .size(size)
-            .clip(RoundedCornerShape(10.dp))
-            .background(AmoledSurface)
-            .border(
-                1.dp,
-                BorderGray,
-                RoundedCornerShape(10.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-
-        Icon(
-            Icons.Default.MusicNote,
-            null,
-            tint = ParaguayWhite,
-            modifier = Modifier.size(size * .42f)
-        )
-    }
-}
-
-/* ============================================================
-   MINI PLAYER
-   ============================================================ */
-
-@Composable
-fun MiniPlayer(
-    song: Song,
-    isPlaying: Boolean,
-    isFavorite: Boolean,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onOpenPlayer: () -> Unit,
-    onFavorite: () -> Unit
-) {
-
-    Surface(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onOpenPlayer),
-        color = AmoledSurface,
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, BorderGray)
-    ) {
-
-        Column(
-            Modifier.padding(9.dp)
-        ) {
-
-            Row(
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                AlbumArt(
-                    song = song,
-                    size = 52.dp
-                )
-
-                Spacer(Modifier.width(11.dp))
-
-                Column(
-                    Modifier.weight(1f)
-                ) {
-
-                    Text(
-                        song.title,
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-
-                    Text(
-                        song.artist,
-                        color = TextGray,
-                        fontSize = 12.sp,
-                        maxLines = 1
-                    )
-                }
-
-                IconButton(
-                    onClick = onFavorite
-                ) {
-
-                    Icon(
-                        if (isFavorite)
-                            Icons.Default.Favorite
-                        else
-                            Icons.Default.FavoriteBorder,
-                        "Favorito",
-                        tint =
-                            if (isFavorite)
-                                ParaguayRed
-                            else
-                                TextGray
-                    )
-                }
-
-                Icon(
-                    Icons.Default.PlayArrow,
-                    "Abrir reproductor",
-                    tint = TextWhite
-                )
-            }
-
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement =
-                    Arrangement.Center,
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                IconButton(onClick = onPrevious) {
-                    Icon(
-                        Icons.Default.SkipPrevious,
-                        "Anterior",
-                        tint = TextWhite
-                    )
-                }
-
-                IconButton(onClick = onPlayPause) {
-                    Icon(
-                        if (isPlaying)
-                            Icons.Default.Pause
-                        else
-                            Icons.Default.PlayArrow,
-                        if (isPlaying)
-                            "Pausar"
-                        else
-                            "Reproducir",
-                        tint = ParaguayWhite,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-
-                IconButton(onClick = onNext) {
-                    Icon(
-                        Icons.Default.SkipNext,
-                        "Siguiente",
-                        tint = TextWhite
-                    )
-                }
-            }
-        }
-    }
-}
-
-/* ============================================================
-   FULL PLAYER
-   ============================================================ */
-
-@Composable
-fun FullPlayerScreen(
-    song: Song,
-    isPlaying: Boolean,
-    currentPosition: Long,
-    duration: Long,
-    repeatMode: Int,
-    shuffleEnabled: Boolean,
-    isFavorite: Boolean,
-    queue: List<Song>,
-    onBack: () -> Unit,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onSeek: (Long) -> Unit,
-    onShuffle: () -> Unit,
-    onRepeat: () -> Unit,
-    onFavorite: () -> Unit,
-    onQueueSongClick: (Song) -> Unit
-) {
-
-    var showQueue by remember {
-        mutableStateOf(false)
-    }
-
-    if (showQueue) {
-
-        QueueScreen(
-            currentSong = song,
-            queue = queue,
-            onBack = {
-                showQueue = false
-            },
-            onSongClick = onQueueSongClick
-        )
-
-        return
-    }
-
-    val safeDuration =
-        duration.coerceAtLeast(1L)
-
-    val safePosition =
-        currentPosition.coerceIn(
-            0L,
-            safeDuration
-        )
-
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(AmoledBlack)
-            .padding(
-                horizontal = 22.dp,
-                vertical = 16.dp
-            )
-    ) {
-
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment =
-                Alignment.CenterVertically
-        ) {
-
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.Default.ArrowBack,
-                    "Volver",
-                    tint = TextWhite
-                )
-            }
-
-            Text(
-                "REPRODUCIENDO",
-                color = TextGray,
-                fontSize = 11.sp,
-                letterSpacing = 2.sp,
-                modifier = Modifier.weight(1f)
-            )
-
-            IconButton(onClick = onFavorite) {
-                Icon(
-                    if (isFavorite)
-                        Icons.Default.Favorite
-                    else
-                        Icons.Default.FavoriteBorder,
-                    "Favorito",
-                    tint =
-                        if (isFavorite)
-                            ParaguayRed
-                        else
-                            TextWhite
-                )
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        AlbumArt(
-            song = song,
-            size = 300.dp,
-            modifier =
-                Modifier.align(
-                    Alignment.CenterHorizontally
-                )
-        )
-
-        Spacer(Modifier.height(25.dp))
-
-        Text(
-            song.title,
-            color = TextWhite,
-            fontSize = 25.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 2
-        )
-
-        Spacer(Modifier.height(5.dp))
-
-        Text(
-            song.artist,
-            color = TextGray,
-            fontSize = 16.sp,
-            maxLines = 1
-        )
-
-        if (song.album.isNotBlank()) {
-
-            Text(
-                song.album,
-                color = TextGrayDark,
-                fontSize = 13.sp,
-                maxLines = 1
-            )
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        Slider(
-            value = safePosition.toFloat(),
-            onValueChange = {
-                onSeek(it.toLong())
-            },
-            valueRange =
-                0f..safeDuration.toFloat(),
-            modifier = Modifier.fillMaxWidth(),
-            colors =
-                SliderDefaults.colors(
-                    thumbColor = ParaguayWhite,
-                    activeTrackColor = ParaguayWhite,
-                    inactiveTrackColor = BorderGray
-                )
-        )
-
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement =
-                Arrangement.SpaceBetween
-        ) {
-
-            Text(
-                formatTime(safePosition),
-                color = TextGray,
-                fontSize = 11.sp
-            )
-
-            Text(
-                formatTime(safeDuration),
-                color = TextGray,
-                fontSize = 11.sp
-            )
-        }
-
-        Spacer(Modifier.height(15.dp))
-
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement =
-                Arrangement.SpaceEvenly,
-            verticalAlignment =
-                Alignment.CenterVertically
-        ) {
-
-            IconButton(onClick = onShuffle) {
-                Icon(
-                    Icons.Default.Shuffle,
-                    "Aleatorio",
-                    tint =
-                        if (shuffleEnabled)
-                            TextWhite
-                        else
-                            TextGray
-                )
-            }
-
-            IconButton(onClick = onPrevious) {
-                Icon(
-                    Icons.Default.SkipPrevious,
-                    "Anterior",
-                    tint = TextWhite,
-                    modifier = Modifier.size(38.dp)
-                )
-            }
-
-            IconButton(
-                onClick = onPlayPause,
-                modifier =
-                    Modifier
-                        .size(70.dp)
-                        .background(
-                            TextWhite,
-                            CircleShape
-                        )
-            ) {
-
-                Icon(
-                    if (isPlaying)
-                        Icons.Default.Pause
-                    else
-                        Icons.Default.PlayArrow,
-                    "Reproducir",
-                    tint = Color.Black,
-                    modifier = Modifier.size(38.dp)
-                )
-            }
-
-            IconButton(onClick = onNext) {
-                Icon(
-                    Icons.Default.SkipNext,
-                    "Siguiente",
-                    tint = TextWhite,
-                    modifier = Modifier.size(38.dp)
-                )
-            }
-
-            IconButton(onClick = onRepeat) {
-                Icon(
-                    if (
-                        repeatMode ==
-                        Player.REPEAT_MODE_ONE
-                    )
-                        Icons.Default.RepeatOne
-                    else
-                        Icons.Default.Repeat,
-                    "Repetición",
-                    tint =
-                        if (
-                            repeatMode !=
-                            Player.REPEAT_MODE_OFF
-                        )
-                            TextWhite
-                        else
-                            TextGray
-                )
-            }
-        }
-
-        Spacer(Modifier.weight(1f))
-
-        Surface(
-            Modifier
-                .fillMaxWidth()
-                .clickable {
-                    showQueue = true
-                },
-            color = AmoledSurface,
-            shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(1.dp, BorderGray)
-        ) {
-
-            Row(
-                Modifier.padding(
-                    horizontal = 16.dp,
-                    vertical = 12.dp
-                ),
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                Icon(
-                    Icons.Default.MusicNote,
-                    null,
-                    tint = ParaguayWhite
-                )
-
-                Spacer(Modifier.width(10.dp))
-
-                Column(
-                    Modifier.weight(1f)
-                ) {
-
-                    Text(
-                        "REPRODUCCIÓN ACTUAL",
-                        color = TextWhite,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                        "${queue.size} canciones en cola",
-                        color = TextGray,
-                        fontSize = 10.sp
-                    )
-                }
-
-                Text(
-                    "ABRIR",
-                    color = TextWhite,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        TerereBrand(
-            Modifier.fillMaxWidth()
-        )
-    }
-}
-
-/* ============================================================
-   QUEUE
-   ============================================================ */
-
-@Composable
-private fun QueueScreen(
-    currentSong: Song,
-    queue: List<Song>,
-    onBack: () -> Unit,
-    onSongClick: (Song) -> Unit
-) {
-
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(AmoledBlack)
-            .padding(
-                horizontal = 18.dp,
-                vertical = 16.dp
-            )
-    ) {
-
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment =
-                Alignment.CenterVertically
-        ) {
-
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.Default.ArrowBack,
-                    "Volver",
-                    tint = TextWhite
-                )
-            }
-
-            Column(
-                Modifier.weight(1f)
-            ) {
-
-                Text(
-                    "REPRODUCCIÓN ACTUAL",
-                    color = TextWhite,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    "${queue.size} canciones",
-                    color = TextGray,
-                    fontSize = 12.sp
-                )
-            }
-        }
-
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-        ) {
-
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(2.dp)
-                    .background(ParaguayRed)
-            )
-
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(2.dp)
-                    .background(ParaguayWhite)
-            )
-
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(2.dp)
-                    .background(ParaguayBlue)
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        if (queue.isEmpty()) {
-
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-
-                Text(
-                    "NO HAY REPRODUCCIÓN ACTUAL",
-                    color = TextGray,
-                    fontSize = 12.sp
-                )
-            }
-
-        } else {
-
-            LazyColumn(
-                Modifier.weight(1f),
-                contentPadding =
-                    PaddingValues(bottom = 20.dp)
-            ) {
-
-                items(
-                    queue,
-                    key = { it.id }
-                ) { queueSong ->
-
-                    val isCurrent =
-                        queueSong.id == currentSong.id
-
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                onSongClick(queueSong)
-                            }
-                            .padding(vertical = 9.dp),
-                        verticalAlignment =
-                            Alignment.CenterVertically
-                    ) {
-
-                        AlbumArt(
-                            song = queueSong,
-                            size = 55.dp
-                        )
-
-                        Spacer(Modifier.width(12.dp))
-
-                        Column(
-                            Modifier.weight(1f)
-                        ) {
-
-                            Text(
-                                queueSong.title,
-                                color =
-                                    if (isCurrent)
-                                        TextWhite
-                                    else
-                                        TextGray,
-                                fontSize = 15.sp,
-                                fontWeight =
-                                    if (isCurrent)
-                                        FontWeight.Bold
-                                    else
-                                        FontWeight.Normal,
-                                maxLines = 2
-                            )
-
-                            Text(
-                                queueSong.artist,
-                                color = TextGrayDark,
-                                fontSize = 12.sp,
-                                maxLines = 1
-                            )
-                        }
-
-                        if (isCurrent) {
-
-                            Icon(
-                                Icons.Default.PlayArrow,
-                                "Reproduciendo",
-                                tint = ParaguayWhite,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        TerereBrand(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 35.dp)
-        )
-    }
-}
-
-/* ============================================================
-   TIME
-   ============================================================ */
-
-private fun formatTime(
-    milliseconds: Long
-): String {
-
-    val seconds =
-        (milliseconds / 1000L)
-            .coerceAtLeast(0L)
-
-    val minutes = seconds / 60L
-    val remaining = seconds % 60L
-
-    return "%d:%02d".format(
-        minutes,
-        remaining
-    )
 }
