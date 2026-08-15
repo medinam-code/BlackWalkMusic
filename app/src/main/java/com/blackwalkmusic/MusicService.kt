@@ -4,7 +4,6 @@ import android.app.PendingIntent
 import android.content.Intent
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -21,16 +20,14 @@ class MusicService : MediaSessionService() {
          * ========================================================
          * EXOPLAYER
          * ========================================================
-         *
-         * Este es el ÚNICO ExoPlayer de la aplicación.
-         *
-         * No creamos otro reproductor en MainActivity.
          */
 
         val audioAttributes =
             AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .setContentType(
+                    C.AUDIO_CONTENT_TYPE_MUSIC
+                )
                 .build()
 
         player =
@@ -44,7 +41,7 @@ class MusicService : MediaSessionService() {
 
         /*
          * ========================================================
-         * MEDIA SESSION
+         * ACTIVIDAD DE LA MEDIA SESSION
          * ========================================================
          */
 
@@ -67,6 +64,12 @@ class MusicService : MediaSessionService() {
                 PendingIntent.FLAG_UPDATE_CURRENT or
                     PendingIntent.FLAG_IMMUTABLE
             )
+
+        /*
+         * ========================================================
+         * MEDIA SESSION
+         * ========================================================
+         */
 
         mediaSession =
             MediaSession.Builder(
@@ -100,15 +103,9 @@ class MusicService : MediaSessionService() {
 
     override fun onDestroy() {
 
-        /*
-         * Primero liberamos MediaSession.
-         */
         mediaSession?.release()
         mediaSession = null
 
-        /*
-         * Después liberamos ExoPlayer.
-         */
         player?.release()
         player = null
 
