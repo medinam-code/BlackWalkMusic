@@ -4,27 +4,41 @@ import android.content.Context
 
 object FavoritesManager {
 
-    private const val PREFS_NAME = "terere_music_preferences"
-    private const val FAVORITES_KEY = "favorite_song_ids"
+    private const val PREFS_NAME =
+        "terere_music_preferences"
 
-    private fun preferences(context: Context) =
+    private const val FAVORITES_KEY =
+        "favorite_song_ids"
+
+    private fun preferences(
+        context: Context
+    ) =
         context.getSharedPreferences(
             PREFS_NAME,
             Context.MODE_PRIVATE
         )
 
-    fun getFavorites(context: Context): Set<Long> {
+    fun getFavorites(
+        context: Context
+    ): Set<Long> {
 
-        return preferences(context)
-            .getStringSet(
-                FAVORITES_KEY,
-                emptySet()
-            )
-            ?.mapNotNull {
-                it.toLongOrNull()
+        val stored =
+            preferences(context)
+                .getStringSet(
+                    FAVORITES_KEY,
+                    emptySet()
+                )
+                ?: emptySet()
+
+        if (stored.isEmpty()) {
+            return emptySet()
+        }
+
+        return stored
+            .mapNotNull { value ->
+                value.toLongOrNull()
             }
-            ?.toSet()
-            ?: emptySet()
+            .toSet()
     }
 
     fun isFavorite(
@@ -41,32 +55,56 @@ object FavoritesManager {
         songId: Long
     ): Boolean {
 
-        val current =
-            getFavorites(context).toMutableSet()
+        val favorites =
+            getFavorites(context)
+                .toMutableSet()
 
-        val nowFavorite: Boolean
+        val isNowFavorite =
+            if (favorites.contains(songId)) {
 
-        if (current.contains(songId)) {
+                favorites.remove(songId)
+                false
 
-            current.remove(songId)
-            nowFavorite = false
+            } else {
 
-        } else {
+                favorites.add(songId)
+                true
+            }
 
-            current.add(songId)
-            nowFavorite = true
-        }
+        saveFavorites(
+            context,
+            favorites
+        )
+
+        return isNowFavorite
+    }
+
+    private fun saveFavorites(
+        context: Context,
+        favorites: Set<Long>
+    ) {
+
+        val values =
+            favorites
+                .map(Long::toString)
+                .toSet()
 
         preferences(context)
             .edit()
             .putStringSet(
                 FAVORITES_KEY,
-                current.map {
-                    it.toString()
-                }.toSet()
+                values
             )
             .apply()
+    }
 
-        return nowFavorite
+    fun clearFavorites(
+        context: Context
+    ) {
+
+        preferences(context)
+            .edit()
+            .remove(FAVORITES_KEY)
+            .apply()
     }
 }
