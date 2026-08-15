@@ -379,17 +379,6 @@ class MainActivity : ComponentActivity() {
      * ============================================================
      * CREAR MEDIA ITEM CON INFORMACIÓN COMPLETA
      * ============================================================
-     *
-     * ESTA ES LA PARTE NUEVA.
-     *
-     * Android utilizará esta información para mostrar:
-     *
-     * - Nombre
-     * - Artista
-     * - Álbum
-     * - Carátula
-     *
-     * en la notificación y pantalla de bloqueo.
      */
 
     private fun createMediaItem(
@@ -438,26 +427,14 @@ class MainActivity : ComponentActivity() {
         val mediaController =
             controller ?: return
 
-        /*
-         * Estado de reproducción.
-         */
-
         isPlaying =
             mediaController.isPlaying
-
-        /*
-         * Modos.
-         */
 
         repeatMode =
             mediaController.repeatMode
 
         shuffleEnabled =
             mediaController.shuffleModeEnabled
-
-        /*
-         * Canción actual.
-         */
 
         val mediaItem =
             mediaController.currentMediaItem
@@ -483,15 +460,7 @@ class MainActivity : ComponentActivity() {
                 newSong
         }
 
-        /*
-         * Cola.
-         */
-
         updateCurrentQueue()
-
-        /*
-         * Tiempo.
-         */
 
         updateProgress()
     }
@@ -604,13 +573,6 @@ class MainActivity : ComponentActivity() {
         if (songs.isEmpty()) {
             return
         }
-
-        /*
-         * IMPORTANTE:
-         *
-         * Ahora usamos createMediaItem()
-         * en lugar de MediaItem.fromUri().
-         */
 
         val mediaItems =
             songs.map {
@@ -791,8 +753,17 @@ class MainActivity : ComponentActivity() {
 
     /*
      * ============================================================
-     * SHUFFLE
+     * ALEATORIO DE LA BIBLIOTECA
      * ============================================================
+     *
+     * Al pulsar "Aleatorio" desde la biblioteca:
+     *
+     * 1. Creamos la playlist completa.
+     * 2. Activamos Shuffle nativo de Media3.
+     * 3. Elegimos una canción inicial al azar.
+     * 4. Reproducimos desde esa canción.
+     *
+     * Así ya NO comienza siempre en la primera canción.
      */
 
     private fun shuffleSongs() {
@@ -804,6 +775,12 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        /*
+         * ========================================================
+         * SI NO EXISTE PLAYLIST
+         * ========================================================
+         */
+
         if (
             mediaController.mediaItemCount <= 0
         ) {
@@ -814,21 +791,68 @@ class MainActivity : ComponentActivity() {
                     createMediaItem(it)
                 }
 
+            /*
+             * Elegimos una posición aleatoria
+             * de toda la biblioteca.
+             */
+
+            val randomIndex =
+                songs.indices.random()
+
+            /*
+             * Activamos Shuffle antes de preparar.
+             */
+
+            mediaController.shuffleModeEnabled =
+                true
+
             mediaController.setMediaItems(
                 mediaItems,
-                0,
+                randomIndex,
                 0L
             )
 
             mediaController.prepare()
+
+        } else {
+
+            /*
+             * ====================================================
+             * YA EXISTE UNA PLAYLIST
+             * ====================================================
+             *
+             * No la reconstruimos.
+             *
+             * Simplemente activamos Shuffle y elegimos
+             * una posición aleatoria de la playlist existente.
+             */
+
+            mediaController.shuffleModeEnabled =
+                true
+
+            val count =
+                mediaController.mediaItemCount
+
+            if (count > 0) {
+
+                val randomIndex =
+                    (0 until count).random()
+
+                mediaController.seekTo(
+                    randomIndex,
+                    0L
+                )
+            }
         }
 
-        mediaController.shuffleModeEnabled =
+        shuffleEnabled =
             true
 
-        shuffleEnabled = true
-
         mediaController.play()
+
+        /*
+         * Sincronización inmediata.
+         */
 
         syncPlayerState()
     }
