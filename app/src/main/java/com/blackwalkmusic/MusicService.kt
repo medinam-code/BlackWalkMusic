@@ -1,37 +1,62 @@
 package com.blackwalkmusic
 
 import android.app.PendingIntent
-import android.content.ComponentName
 import android.content.Intent
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 
 class MusicService : MediaSessionService() {
 
+    private var player: ExoPlayer? = null
     private var mediaSession: MediaSession? = null
 
     override fun onCreate() {
         super.onCreate()
 
-        val player =
-            MusicPlayer.getPlayer(this)
+        /*
+         * ========================================================
+         * EXOPLAYER
+         * ========================================================
+         *
+         * Este es el ÚNICO ExoPlayer de la aplicación.
+         *
+         * No creamos otro reproductor en MainActivity.
+         */
 
-        val activityComponent =
-            ComponentName(
-                packageName,
-                "com.blackwalkmusic.MainActivity"
-            )
+        val audioAttributes =
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .build()
+
+        player =
+            ExoPlayer.Builder(this)
+                .setAudioAttributes(
+                    audioAttributes,
+                    true
+                )
+                .setHandleAudioBecomingNoisy(true)
+                .build()
+
+        /*
+         * ========================================================
+         * MEDIA SESSION
+         * ========================================================
+         */
 
         val sessionIntent =
-            Intent().apply {
+            Intent(
+                this,
+                MainActivity::class.java
+            ).apply {
 
-                component =
-                    activityComponent
-
-                addFlags(
+                flags =
                     Intent.FLAG_ACTIVITY_SINGLE_TOP or
                         Intent.FLAG_ACTIVITY_CLEAR_TOP
-                )
             }
 
         val sessionActivity =
@@ -46,13 +71,19 @@ class MusicService : MediaSessionService() {
         mediaSession =
             MediaSession.Builder(
                 this,
-                player
+                player!!
             )
                 .setSessionActivity(
                     sessionActivity
                 )
                 .build()
     }
+
+    /*
+     * ============================================================
+     * MEDIA CONTROLLER
+     * ============================================================
+     */
 
     override fun onGetSession(
         controllerInfo: MediaSession.ControllerInfo
@@ -61,13 +92,25 @@ class MusicService : MediaSessionService() {
         return mediaSession
     }
 
+    /*
+     * ============================================================
+     * DESTROY
+     * ============================================================
+     */
+
     override fun onDestroy() {
 
+        /*
+         * Primero liberamos MediaSession.
+         */
         mediaSession?.release()
-
         mediaSession = null
 
-        MusicPlayer.release()
+        /*
+         * Después liberamos ExoPlayer.
+         */
+        player?.release()
+        player = null
 
         super.onDestroy()
     }
