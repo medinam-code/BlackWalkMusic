@@ -27,21 +27,9 @@ class MainActivity : ComponentActivity() {
         emptyList()
     )
 
-    /*
-     * ============================================================
-     * CANCIÓN ACTUAL
-     * ============================================================
-     */
-
     private var currentSong by mutableStateOf<Song?>(
         null
     )
-
-    /*
-     * ============================================================
-     * COLA
-     * ============================================================
-     */
 
     private var currentQueue by mutableStateOf<List<Song>>(
         emptyList()
@@ -63,24 +51,12 @@ class MainActivity : ComponentActivity() {
         emptySet()
     )
 
-    /*
-     * ============================================================
-     * PERMISOS
-     * ============================================================
-     */
-
     private val permissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) {
             loadMusic()
         }
-
-    /*
-     * ============================================================
-     * LISTENER DEL PLAYER
-     * ============================================================
-     */
 
     private val playerListener =
         object : Player.Listener {
@@ -130,7 +106,8 @@ class MainActivity : ComponentActivity() {
                 mode: Int
             ) {
 
-                repeatMode = mode
+                repeatMode =
+                    mode
             }
 
             override fun onShuffleModeEnabledChanged(
@@ -144,17 +121,13 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    /*
-     * ============================================================
-     * ON CREATE
-     * ============================================================
-     */
-
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
 
-        super.onCreate(savedInstanceState)
+        super.onCreate(
+            savedInstanceState
+        )
 
         favoriteIds =
             FavoritesManager.getFavorites(
@@ -166,10 +139,6 @@ class MainActivity : ComponentActivity() {
             var showFullPlayer by remember {
                 mutableStateOf(false)
             }
-
-            /*
-             * Actualización del progreso.
-             */
 
             LaunchedEffect(Unit) {
 
@@ -216,7 +185,8 @@ class MainActivity : ComponentActivity() {
 
                     onBack = {
 
-                        showFullPlayer = false
+                        showFullPlayer =
+                            false
                     },
 
                     onPlayPause = {
@@ -256,12 +226,12 @@ class MainActivity : ComponentActivity() {
                     onFavorite = {
 
                         currentSong?.let {
-
                             toggleFavorite(it)
                         }
                     },
 
-                    onQueueSongClick = { queueSong ->
+                    onQueueSongClick = {
+                        queueSong ->
 
                         playSongFromCurrentQueue(
                             queueSong
@@ -284,6 +254,12 @@ class MainActivity : ComponentActivity() {
 
                     favoriteIds =
                         favoriteIds,
+
+                    currentPosition =
+                        currentPosition,
+
+                    duration =
+                        duration,
 
                     onSongClick = {
 
@@ -316,7 +292,8 @@ class MainActivity : ComponentActivity() {
                             currentSong != null
                         ) {
 
-                            showFullPlayer = true
+                            showFullPlayer =
+                                true
                         }
                     },
 
@@ -332,12 +309,6 @@ class MainActivity : ComponentActivity() {
 
         connectToMusicService()
     }
-
-    /*
-     * ============================================================
-     * MEDIA CONTROLLER
-     * ============================================================
-     */
 
     private fun connectToMusicService() {
 
@@ -375,12 +346,6 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    /*
-     * ============================================================
-     * CREAR MEDIA ITEM CON INFORMACIÓN COMPLETA
-     * ============================================================
-     */
-
     private fun createMediaItem(
         song: Song
     ): MediaItem {
@@ -416,12 +381,6 @@ class MainActivity : ComponentActivity() {
             .build()
     }
 
-    /*
-     * ============================================================
-     * SINCRONIZACIÓN CENTRAL
-     * ============================================================
-     */
-
     private fun syncPlayerState() {
 
         val mediaController =
@@ -447,7 +406,6 @@ class MainActivity : ComponentActivity() {
 
         val newSong =
             songs.firstOrNull {
-
                 it.uri == currentUri
             }
 
@@ -464,12 +422,6 @@ class MainActivity : ComponentActivity() {
 
         updateProgress()
     }
-
-    /*
-     * ============================================================
-     * COLA ACTUAL
-     * ============================================================
-     */
 
     private fun updateCurrentQueue() {
 
@@ -497,7 +449,6 @@ class MainActivity : ComponentActivity() {
 
         val songsByUri =
             songs.associateBy {
-
                 it.uri
             }
 
@@ -522,7 +473,6 @@ class MainActivity : ComponentActivity() {
                     ?: continue
 
             songsByUri[uri]?.let {
-
                 result.add(it)
             }
         }
@@ -530,12 +480,6 @@ class MainActivity : ComponentActivity() {
         currentQueue =
             result
     }
-
-    /*
-     * ============================================================
-     * PROGRESO
-     * ============================================================
-     */
 
     private fun updateProgress() {
 
@@ -557,12 +501,6 @@ class MainActivity : ComponentActivity() {
                 ?: 0L
     }
 
-    /*
-     * ============================================================
-     * REPRODUCIR CANCIÓN
-     * ============================================================
-     */
-
     private fun playSong(
         song: Song
     ) {
@@ -576,16 +514,14 @@ class MainActivity : ComponentActivity() {
 
         val mediaItems =
             songs.map {
-
                 createMediaItem(it)
             }
 
         val startIndex =
             songs.indexOfFirst {
-
                 it.uri == song.uri
-
-            }.coerceAtLeast(0)
+            }
+                .coerceAtLeast(0)
 
         mediaController.setMediaItems(
             mediaItems,
@@ -602,12 +538,6 @@ class MainActivity : ComponentActivity() {
 
         syncPlayerState()
     }
-
-    /*
-     * ============================================================
-     * REPRODUCIR DESDE COLA
-     * ============================================================
-     */
 
     private fun playSongFromCurrentQueue(
         song: Song
@@ -655,12 +585,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /*
-     * ============================================================
-     * PLAY / PAUSE
-     * ============================================================
-     */
-
     private fun playPause() {
 
         val mediaController =
@@ -680,12 +604,6 @@ class MainActivity : ComponentActivity() {
         isPlaying =
             mediaController.isPlaying
     }
-
-    /*
-     * ============================================================
-     * SIGUIENTE
-     * ============================================================
-     */
 
     private fun nextSong() {
 
@@ -715,12 +633,6 @@ class MainActivity : ComponentActivity() {
         syncPlayerState()
     }
 
-    /*
-     * ============================================================
-     * ANTERIOR
-     * ============================================================
-     */
-
     private fun previousSong() {
 
         val mediaController =
@@ -731,7 +643,9 @@ class MainActivity : ComponentActivity() {
             3000L
         ) {
 
-            mediaController.seekTo(0L)
+            mediaController.seekTo(
+                0L
+            )
 
             syncPlayerState()
 
@@ -751,21 +665,6 @@ class MainActivity : ComponentActivity() {
         syncPlayerState()
     }
 
-    /*
-     * ============================================================
-     * ALEATORIO DE LA BIBLIOTECA
-     * ============================================================
-     *
-     * Al pulsar "Aleatorio" desde la biblioteca:
-     *
-     * 1. Creamos la playlist completa.
-     * 2. Activamos Shuffle nativo de Media3.
-     * 3. Elegimos una canción inicial al azar.
-     * 4. Reproducimos desde esa canción.
-     *
-     * Así ya NO comienza siempre en la primera canción.
-     */
-
     private fun shuffleSongs() {
 
         val mediaController =
@@ -775,93 +674,32 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        /*
-         * ========================================================
-         * SI NO EXISTE PLAYLIST
-         * ========================================================
-         */
-
-        if (
-            mediaController.mediaItemCount <= 0
-        ) {
-
-            val mediaItems =
-                songs.map {
-
-                    createMediaItem(it)
-                }
-
-            /*
-             * Elegimos una posición aleatoria
-             * de toda la biblioteca.
-             */
-
-            val randomIndex =
-                songs.indices.random()
-
-            /*
-             * Activamos Shuffle antes de preparar.
-             */
-
-            mediaController.shuffleModeEnabled =
-                true
-
-            mediaController.setMediaItems(
-                mediaItems,
-                randomIndex,
-                0L
-            )
-
-            mediaController.prepare()
-
-        } else {
-
-            /*
-             * ====================================================
-             * YA EXISTE UNA PLAYLIST
-             * ====================================================
-             *
-             * No la reconstruimos.
-             *
-             * Simplemente activamos Shuffle y elegimos
-             * una posición aleatoria de la playlist existente.
-             */
-
-            mediaController.shuffleModeEnabled =
-                true
-
-            val count =
-                mediaController.mediaItemCount
-
-            if (count > 0) {
-
-                val randomIndex =
-                    (0 until count).random()
-
-                mediaController.seekTo(
-                    randomIndex,
-                    0L
-                )
+        val mediaItems =
+            songs.map {
+                createMediaItem(it)
             }
-        }
+
+        val randomIndex =
+            songs.indices.random()
+
+        mediaController.setMediaItems(
+            mediaItems,
+            randomIndex,
+            0L
+        )
+
+        mediaController.shuffleModeEnabled =
+            true
+
+        mediaController.prepare()
+
+        mediaController.play()
 
         shuffleEnabled =
             true
 
-        mediaController.play()
-
-        /*
-         * Sincronización inmediata.
-         */
-
         syncPlayerState()
     }
-
-    /*
-     * ============================================================
-     * TOGGLE SHUFFLE
-     * ============================================================
-     */
 
     private fun toggleShuffle() {
 
@@ -882,12 +720,6 @@ class MainActivity : ComponentActivity() {
 
         syncPlayerState()
     }
-
-    /*
-     * ============================================================
-     * REPEAT
-     * ============================================================
-     */
 
     private fun toggleRepeat() {
 
@@ -916,12 +748,6 @@ class MainActivity : ComponentActivity() {
             newMode
     }
 
-    /*
-     * ============================================================
-     * FAVORITOS
-     * ============================================================
-     */
-
     private fun toggleFavorite(
         song: Song
     ) {
@@ -936,12 +762,6 @@ class MainActivity : ComponentActivity() {
                 this
             )
     }
-
-    /*
-     * ============================================================
-     * PERMISOS
-     * ============================================================
-     */
 
     private fun requestMusicPermission() {
 
@@ -967,12 +787,6 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    /*
-     * ============================================================
-     * CARGAR MÚSICA
-     * ============================================================
-     */
-
     private fun loadMusic() {
 
         songs =
@@ -987,12 +801,6 @@ class MainActivity : ComponentActivity() {
 
         syncPlayerState()
     }
-
-    /*
-     * ============================================================
-     * DESTROY
-     * ============================================================
-     */
 
     override fun onDestroy() {
 
@@ -1009,7 +817,8 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        controller = null
+        controller =
+            null
 
         super.onDestroy()
     }
