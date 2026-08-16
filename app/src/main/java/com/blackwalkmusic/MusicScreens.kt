@@ -4,7 +4,9 @@
 
 package com.blackwalkmusic
 
+import android.content.Intent
 import android.net.Uri
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,42 +30,45 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.Cast
+
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +76,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,44 +89,103 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import androidx.media3.common.Player
+
 import coil.compose.AsyncImage
+
 import kotlin.math.max
 
-private val AppBackground = Color(0xFF020308)
-private val SurfaceDark = Color(0xFF090B10)
-private val SurfaceCard = Color(0xFF101217)
-private val SurfaceCard2 = Color(0xFF15181F)
-private val TextWhite = Color(0xFFF5F5F7)
-private val TextGray = Color(0xFF9B9DA5)
-private val TerereRed = Color(0xFFF12638)
-private val TerereBlue = Color(0xFF1677FF)
-private val NeonPurple = Color(0xFF9B38FF)
+
+private val AppBackground =
+    Color(0xFF020308)
+
+private val SurfaceDark =
+    Color(0xFF090B10)
+
+private val SurfaceCard =
+    Color(0xFF101217)
+
+private val SurfaceCard2 =
+    Color(0xFF15181F)
+
+private val TextWhite =
+    Color(0xFFF5F5F7)
+
+private val TextGray =
+    Color(0xFF9B9DA5)
+
+private val TerereRed =
+    Color(0xFFF12638)
+
+private val TerereBlue =
+    Color(0xFF1677FF)
+
+private val NeonPurple =
+    Color(0xFF9B38FF)
+
+
+/*
+ * ============================================================
+ * PESTAÑAS
+ * ============================================================
+ */
 
 private enum class MusicTab {
+
     SONGS,
-    ARTISTS,
-    ALBUMS,
+
+    FOLDERS,
+
     PLAYLISTS,
+
     FAVORITES
 }
 
+
+/*
+ * ============================================================
+ * ORDEN
+ * ============================================================
+ */
+
 private enum class SortMode {
+
     TITLE,
-    ARTIST,
-    ALBUM,
+
     NEWEST
 }
 
-private fun albumArtUri(albumId: Long): Uri {
+
+/*
+ * ============================================================
+ * CARÁTULA
+ * ============================================================
+ */
+
+private fun albumArtUri(
+    albumId: Long
+): Uri {
+
     return Uri.parse(
         "content://media/external/audio/albumart/$albumId"
     )
 }
 
-private fun formatTime(milliseconds: Long): String {
+
+/*
+ * ============================================================
+ * FORMATO DE TIEMPO
+ * ============================================================
+ */
+
+private fun formatTime(
+    milliseconds: Long
+): String {
+
     val totalSeconds =
-        (milliseconds / 1000L).coerceAtLeast(0L)
+        (milliseconds / 1000L)
+            .coerceAtLeast(0L)
 
     val minutes =
         totalSeconds / 60L
@@ -134,6 +199,7 @@ private fun formatTime(milliseconds: Long): String {
     )
 }
 
+
 /*
  * ============================================================
  * LOGO
@@ -144,10 +210,13 @@ private fun formatTime(milliseconds: Long): String {
 private fun TerereLogo(
     modifier: Modifier = Modifier
 ) {
+
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment =
+            Alignment.CenterVertically
     ) {
+
         Text(
             text = "TERERÉ",
             color = TerereRed,
@@ -157,7 +226,8 @@ private fun TerereLogo(
         )
 
         Spacer(
-            modifier = Modifier.width(6.dp)
+            modifier =
+                Modifier.width(6.dp)
         )
 
         Text(
@@ -169,7 +239,8 @@ private fun TerereLogo(
         )
 
         Spacer(
-            modifier = Modifier.width(6.dp)
+            modifier =
+                Modifier.width(6.dp)
         )
 
         Text(
@@ -182,11 +253,10 @@ private fun TerereLogo(
     }
 }
 
+
 /*
  * ============================================================
- * BANNER GENERADO POR COMPOSE
- *
- * No utiliza R.drawable.
+ * BANNER
  * ============================================================
  */
 
@@ -194,6 +264,7 @@ private fun TerereLogo(
 private fun TerereBanner(
     modifier: Modifier = Modifier
 ) {
+
     Box(
         modifier = modifier
             .clip(
@@ -209,11 +280,15 @@ private fun TerereBanner(
                     )
                 )
             ),
-        contentAlignment = Alignment.Center
+        contentAlignment =
+            Alignment.Center
     ) {
+
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment =
+                Alignment.CenterHorizontally
         ) {
+
             Text(
                 text = "TERERÉ MUSIC",
                 color = TextWhite,
@@ -223,18 +298,21 @@ private fun TerereBanner(
             )
 
             Spacer(
-                modifier = Modifier.height(4.dp)
+                modifier =
+                    Modifier.height(4.dp)
             )
 
             Text(
-                text = "MÚSICA • PARAGUAY • PY",
+                text =
+                    "MÚSICA • PARAGUAY • PY",
                 color = TerereBlue,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
 
             Spacer(
-                modifier = Modifier.height(10.dp)
+                modifier =
+                    Modifier.height(10.dp)
             )
 
             Box(
@@ -254,6 +332,7 @@ private fun TerereBanner(
         }
     }
 }
+
 
 /*
  * ============================================================
@@ -277,8 +356,11 @@ fun BlackWalkMusicScreen(
     onOpenPlayer: () -> Unit,
     onFavorite: (Song) -> Unit
 ) {
+
     var selectedTab by remember {
-        mutableStateOf(MusicTab.SONGS)
+        mutableStateOf(
+            MusicTab.SONGS
+        )
     }
 
     var searchVisible by remember {
@@ -294,81 +376,88 @@ fun BlackWalkMusicScreen(
     }
 
     var sortMode by remember {
-        mutableStateOf(SortMode.TITLE)
+        mutableStateOf(
+            SortMode.TITLE
+        )
     }
 
     var showMenu by remember {
         mutableStateOf(false)
     }
 
-    val displayedSongs =
+    var selectedFolder by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var showInfo by remember {
+        mutableStateOf(false)
+    }
+
+
+    val filteredSongs =
         remember(
             songs,
             selectedTab,
             favoriteIds,
             searchText,
-            sortMode
+            sortMode,
+            selectedFolder
         ) {
-            var result =
+
+            var result: List<Song> =
                 when (selectedTab) {
+
                     MusicTab.SONGS ->
                         songs
 
                     MusicTab.FAVORITES ->
                         songs.filter {
-                            favoriteIds.contains(it.id)
+                            favoriteIds.contains(
+                                it.id
+                            )
                         }
 
-                    MusicTab.ARTISTS ->
-                        songs.distinctBy {
-                            it.artist
-                        }
-
-                    MusicTab.ALBUMS ->
-                        songs.distinctBy {
-                            "${it.album}|${it.artist}"
+                    MusicTab.FOLDERS ->
+                        if (
+                            selectedFolder != null
+                        ) {
+                            songs.filter {
+                                it.folder ==
+                                    selectedFolder
+                            }
+                        } else {
+                            emptyList()
                         }
 
                     MusicTab.PLAYLISTS ->
                         emptyList()
                 }
 
-            if (searchText.isNotBlank()) {
+
+            if (
+                searchText.isNotBlank()
+            ) {
+
                 val query =
                     searchText.trim()
 
                 result =
                     result.filter { song ->
+
                         song.title.contains(
                             query,
-                            true
-                        ) ||
-                            song.artist.contains(
-                                query,
-                                true
-                            ) ||
-                            song.album.contains(
-                                query,
-                                true
-                            )
+                            ignoreCase = true
+                        )
                     }
             }
 
+
             result =
                 when (sortMode) {
+
                     SortMode.TITLE ->
                         result.sortedBy {
                             it.title.lowercase()
-                        }
-
-                    SortMode.ARTIST ->
-                        result.sortedBy {
-                            it.artist.lowercase()
-                        }
-
-                    SortMode.ALBUM ->
-                        result.sortedBy {
-                            it.album.lowercase()
                         }
 
                     SortMode.NEWEST ->
@@ -380,26 +469,41 @@ fun BlackWalkMusicScreen(
             result
         }
 
+
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = AppBackground,
+        modifier =
+            Modifier.fillMaxSize(),
+
+        containerColor =
+            AppBackground,
 
         topBar = {
+
             if (searchVisible) {
+
                 SearchBar(
-                    value = searchText,
+                    value =
+                        searchText,
+
                     onValueChange = {
                         searchText = it
                     },
+
                     onClose = {
-                        searchVisible = false
+                        searchVisible =
+                            false
+
                         searchText = ""
                     }
                 )
+
             } else {
+
                 Surface(
-                    color = AppBackground
+                    color =
+                        AppBackground
                 ) {
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -407,21 +511,27 @@ fun BlackWalkMusicScreen(
                                 horizontal = 14.dp,
                                 vertical = 10.dp
                             ),
+
                         verticalAlignment =
                             Alignment.CenterVertically
                     ) {
+
                         IconButton(
                             onClick = {
                                 showMenu = true
                             }
                         ) {
+
                             Icon(
                                 imageVector =
                                     Icons.Default.Menu,
+
                                 contentDescription =
                                     "Menú",
+
                                 tint =
                                     TextWhite,
+
                                 modifier =
                                     Modifier.size(32.dp)
                             )
@@ -439,62 +549,101 @@ fun BlackWalkMusicScreen(
 
                         IconButton(
                             onClick = {
-                                searchVisible = true
+                                searchVisible =
+                                    true
                             }
                         ) {
+
                             Icon(
                                 imageVector =
                                     Icons.Default.Search,
+
                                 contentDescription =
                                     "Buscar",
+
                                 tint =
                                     TextWhite,
+
                                 modifier =
                                     Modifier.size(30.dp)
                             )
                         }
 
+
                         Box {
+
                             IconButton(
                                 onClick = {
                                     showMenu = true
                                 }
                             ) {
+
                                 Icon(
                                     imageVector =
                                         Icons.Default.MoreVert,
+
                                     contentDescription =
                                         "Más opciones",
+
                                     tint =
                                         TextWhite,
+
                                     modifier =
                                         Modifier.size(30.dp)
                                 )
                             }
 
+
                             DropdownMenu(
-                                expanded = showMenu,
+                                expanded =
+                                    showMenu,
+
                                 onDismissRequest = {
-                                    showMenu = false
+                                    showMenu =
+                                        false
                                 }
                             ) {
+
                                 DropdownMenuItem(
                                     text = {
                                         Text(
                                             "Actualizar biblioteca"
                                         )
                                     },
+
                                     onClick = {
-                                        showMenu = false
+                                        showMenu =
+                                            false
                                     }
                                 )
 
                                 DropdownMenuItem(
                                     text = {
-                                        Text("Ajustes")
+                                        Text(
+                                            "Ajustes"
+                                        )
                                     },
+
                                     onClick = {
-                                        showMenu = false
+                                        showMenu =
+                                            false
+                                    }
+                                )
+
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "Información"
+                                        )
+                                    },
+
+                                    onClick = {
+
+                                        showMenu =
+                                            false
+
+                                        showInfo =
+                                            true
                                     }
                                 )
                             }
@@ -504,27 +653,45 @@ fun BlackWalkMusicScreen(
             }
         },
 
+
         bottomBar = {
-            if (currentSong != null) {
+
+            if (
+                currentSong != null
+            ) {
+
                 MiniPlayer(
-                    song = currentSong,
-                    isPlaying = isPlaying,
+                    song =
+                        currentSong,
+
+                    isPlaying =
+                        isPlaying,
+
                     currentPosition =
                         currentPosition,
-                    duration = duration,
+
+                    duration =
+                        duration,
+
                     onClick =
                         onOpenPlayer,
+
                     onPlayPause =
                         onPlayPause,
+
                     onNext =
                         onNext,
+
                     onPrevious =
                         onPrevious
                 )
             }
         }
+
     ) { paddingValues ->
+
         LazyColumn(
+
             modifier = Modifier
                 .fillMaxSize()
                 .background(
@@ -533,9 +700,13 @@ fun BlackWalkMusicScreen(
                 .padding(
                     paddingValues
                 ),
+
             verticalArrangement =
-                Arrangement.spacedBy(0.dp)
+                Arrangement.spacedBy(
+                    0.dp
+                )
         ) {
+
 
             /*
              * ====================================================
@@ -544,6 +715,7 @@ fun BlackWalkMusicScreen(
              */
 
             item {
+
                 TerereBanner(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -555,21 +727,99 @@ fun BlackWalkMusicScreen(
                 )
             }
 
+
             /*
              * ====================================================
-             * TABS
+             * PESTAÑAS
              * ====================================================
              */
 
             item {
+
                 MusicTabs(
                     selectedTab =
                         selectedTab,
+
                     onTabSelected = {
-                        selectedTab = it
+
+                        selectedTab =
+                            it
+
+                        if (
+                            it !=
+                            MusicTab.FOLDERS
+                        ) {
+                            selectedFolder =
+                                null
+                        }
                     }
                 )
             }
+
+
+            /*
+             * ====================================================
+             * BOTÓN VOLVER DE CARPETA
+             * ====================================================
+             */
+
+            if (
+                selectedTab ==
+                    MusicTab.FOLDERS &&
+                selectedFolder != null
+            ) {
+
+                item {
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedFolder =
+                                    null
+                            }
+                            .padding(
+                                horizontal = 22.dp,
+                                vertical = 8.dp
+                            ),
+
+                        verticalAlignment =
+                            Alignment.CenterVertically
+                    ) {
+
+                        Icon(
+                            imageVector =
+                                Icons.Default.ArrowBack,
+
+                            contentDescription =
+                                "Volver",
+
+                            tint =
+                                TerereBlue
+                        )
+
+                        Spacer(
+                            modifier =
+                                Modifier.width(8.dp)
+                        )
+
+                        Text(
+                            text =
+                                "Carpetas",
+
+                            color =
+                                TerereBlue,
+
+                            fontSize =
+                                16.sp,
+
+                            fontWeight =
+                                FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
 
             /*
              * ====================================================
@@ -577,195 +827,320 @@ fun BlackWalkMusicScreen(
              * ====================================================
              */
 
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            horizontal = 22.dp,
-                            vertical = 6.dp
-                        ),
-                    verticalAlignment =
-                        Alignment.CenterVertically
-                ) {
+            if (
+                selectedTab !=
+                    MusicTab.PLAYLISTS &&
+                !(
+                    selectedTab ==
+                        MusicTab.FOLDERS &&
+                    selectedFolder == null
+                )
+            ) {
+
+                item {
+
                     Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                onShuffle()
-                            }
+                            .fillMaxWidth()
                             .padding(
-                                vertical = 10.dp
+                                horizontal = 22.dp,
+                                vertical = 6.dp
                             ),
+
                         verticalAlignment =
                             Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector =
-                                Icons.Default.Shuffle,
-                            contentDescription =
-                                "Aleatorio",
-                            tint =
-                                TerereRed,
-                            modifier =
-                                Modifier.size(25.dp)
-                        )
 
-                        Spacer(
-                            modifier =
-                                Modifier.width(10.dp)
-                        )
-
-                        Text(
-                            text = "Aleatorio",
-                            color = TerereRed,
-                            fontSize = 18.sp,
-                            fontWeight =
-                                FontWeight.Medium
-                        )
-                    }
-
-                    Box {
                         Row(
                             modifier = Modifier
+                                .weight(1f)
                                 .clickable {
-                                    showSortMenu = true
+                                    onShuffle()
                                 }
                                 .padding(
-                                    vertical = 10.dp,
-                                    horizontal = 4.dp
+                                    vertical = 10.dp
                                 ),
+
                             verticalAlignment =
                                 Alignment.CenterVertically
                         ) {
+
                             Icon(
                                 imageVector =
-                                    Icons.Default.Sort,
+                                    Icons.Default.Shuffle,
+
                                 contentDescription =
-                                    "Ordenar",
+                                    "Aleatorio",
+
                                 tint =
-                                    TextWhite,
+                                    TerereRed,
+
                                 modifier =
                                     Modifier.size(25.dp)
                             )
 
                             Spacer(
                                 modifier =
-                                    Modifier.width(8.dp)
+                                    Modifier.width(10.dp)
                             )
 
                             Text(
-                                text = "Ordenar",
-                                color = TextGray,
-                                fontSize = 17.sp
+                                text =
+                                    "Aleatorio",
+
+                                color =
+                                    TerereRed,
+
+                                fontSize =
+                                    18.sp,
+
+                                fontWeight =
+                                    FontWeight.Medium
                             )
                         }
 
-                        DropdownMenu(
-                            expanded =
-                                showSortMenu,
-                            onDismissRequest = {
-                                showSortMenu = false
+
+                        Box {
+
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .clickable {
+                                            showSortMenu =
+                                                true
+                                        }
+                                        .padding(
+                                            vertical = 10.dp,
+                                            horizontal = 4.dp
+                                        ),
+
+                                verticalAlignment =
+                                    Alignment.CenterVertically
+                            ) {
+
+                                Icon(
+                                    imageVector =
+                                        Icons.Default.Sort,
+
+                                    contentDescription =
+                                        "Ordenar",
+
+                                    tint =
+                                        TextWhite,
+
+                                    modifier =
+                                        Modifier.size(25.dp)
+                                )
+
+                                Spacer(
+                                    modifier =
+                                        Modifier.width(8.dp)
+                                )
+
+                                Text(
+                                    text =
+                                        "Ordenar",
+
+                                    color =
+                                        TextGray,
+
+                                    fontSize =
+                                        17.sp
+                                )
                             }
-                        ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text("Título")
-                                },
-                                onClick = {
-                                    sortMode =
-                                        SortMode.TITLE
-                                    showSortMenu = false
-                                }
-                            )
 
-                            DropdownMenuItem(
-                                text = {
-                                    Text("Artista")
-                                },
-                                onClick = {
-                                    sortMode =
-                                        SortMode.ARTIST
-                                    showSortMenu = false
-                                }
-                            )
 
-                            DropdownMenuItem(
-                                text = {
-                                    Text("Álbum")
-                                },
-                                onClick = {
-                                    sortMode =
-                                        SortMode.ALBUM
-                                    showSortMenu = false
-                                }
-                            )
+                            DropdownMenu(
+                                expanded =
+                                    showSortMenu,
 
-                            DropdownMenuItem(
-                                text = {
-                                    Text("Más recientes")
-                                },
-                                onClick = {
-                                    sortMode =
-                                        SortMode.NEWEST
-                                    showSortMenu = false
+                                onDismissRequest = {
+                                    showSortMenu =
+                                        false
                                 }
-                            )
+                            ) {
+
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "Título"
+                                        )
+                                    },
+
+                                    onClick = {
+
+                                        sortMode =
+                                            SortMode.TITLE
+
+                                        showSortMenu =
+                                            false
+                                    }
+                                )
+
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "Más recientes"
+                                        )
+                                    },
+
+                                    onClick = {
+
+                                        sortMode =
+                                            SortMode.NEWEST
+
+                                        showSortMenu =
+                                            false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
 
+
             /*
              * ====================================================
-             * LISTA
+             * CARPETAS
              * ====================================================
              */
 
             if (
                 selectedTab ==
-                MusicTab.PLAYLISTS
+                    MusicTab.FOLDERS &&
+                selectedFolder == null
             ) {
+
+                val folders =
+                    songs
+                        .groupBy {
+                            it.folder
+                        }
+                        .keys
+                        .sorted()
+
+
+                if (
+                    folders.isEmpty()
+                ) {
+
+                    item {
+                        EmptyMusicState()
+                    }
+
+                } else {
+
+                    items(
+                        items =
+                            folders,
+
+                        key = {
+                            it
+                        }
+                    ) { folder ->
+
+                        FolderRow(
+                            folder =
+                                folder,
+
+                            songCount =
+                                songs.count {
+                                    it.folder ==
+                                        folder
+                                },
+
+                            onClick = {
+
+                                selectedFolder =
+                                    folder
+                            }
+                        )
+                    }
+                }
+            }
+
+
+            /*
+             * ====================================================
+             * LISTAS
+             * ====================================================
+             */
+
+            else if (
+                selectedTab ==
+                    MusicTab.PLAYLISTS
+            ) {
+
                 item {
+
                     EmptyPlaylistState()
                 }
-            } else if (
-                displayedSongs.isEmpty()
+            }
+
+
+            /*
+             * ====================================================
+             * MÚSICAS
+             * ====================================================
+             */
+
+            else if (
+                filteredSongs.isEmpty()
             ) {
+
                 item {
+
                     EmptyMusicState()
                 }
+
             } else {
+
                 items(
-                    items = displayedSongs,
+                    items =
+                        filteredSongs,
+
                     key = {
                         it.id
                     }
                 ) { song ->
+
                     SongRow(
-                        song = song,
+                        song =
+                            song,
+
                         isCurrent =
                             currentSong?.id ==
                                 song.id,
+
                         isPlaying =
                             isPlaying &&
                                 currentSong?.id ==
                                     song.id,
+
                         isFavorite =
                             favoriteIds.contains(
                                 song.id
                             ),
+
                         onClick = {
-                            onSongClick(song)
+                            onSongClick(
+                                song
+                            )
                         },
+
                         onFavorite = {
-                            onFavorite(song)
+                            onFavorite(
+                                song
+                            )
                         }
                     )
                 }
             }
 
+
             item {
+
                 Spacer(
                     modifier = Modifier
                         .height(110.dp)
@@ -774,7 +1149,52 @@ fun BlackWalkMusicScreen(
             }
         }
     }
+
+
+    /*
+     * ============================================================
+     * INFORMACIÓN
+     * ============================================================
+     */
+
+    if (showInfo) {
+
+        AlertDialog(
+
+            onDismissRequest = {
+                showInfo = false
+            },
+
+            confirmButton = {
+
+                DropdownMenuItem(
+                    text = {
+                        Text("Cerrar")
+                    },
+
+                    onClick = {
+                        showInfo = false
+                    }
+                )
+            },
+
+            title = {
+                Text(
+                    "Tereré Music PY"
+                )
+            },
+
+            text = {
+
+                Text(
+                    "Reproductor de música ligero y optimizado para Android.\n\n" +
+                        "Biblioteca local • Carpetas • Listas • Favoritos"
+                )
+            }
+        )
+    }
 }
+
 
 /*
  * ============================================================
@@ -788,9 +1208,12 @@ private fun SearchBar(
     onValueChange: (String) -> Unit,
     onClose: () -> Unit
 ) {
+
     Surface(
-        color = SurfaceDark
+        color =
+            SurfaceDark
     ) {
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -798,33 +1221,48 @@ private fun SearchBar(
                     horizontal = 8.dp,
                     vertical = 6.dp
                 ),
+
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
+
             IconButton(
-                onClick = onClose
+                onClick =
+                    onClose
             ) {
+
                 Icon(
                     imageVector =
                         Icons.Default.Close,
+
                     contentDescription =
                         "Cerrar",
+
                     tint =
                         TextWhite
                 )
             }
 
+
             OutlinedTextField(
-                value = value,
+                value =
+                    value,
+
                 onValueChange =
                     onValueChange,
+
                 modifier =
                     Modifier.weight(1f),
-                singleLine = true,
+
+                singleLine =
+                    true,
+
                 placeholder = {
+
                     Text(
-                        "Buscar canción, artista o álbum",
-                        color = TextGray
+                        "Buscar canción",
+                        color =
+                            TextGray
                     )
                 }
             )
@@ -832,9 +1270,10 @@ private fun SearchBar(
     }
 }
 
+
 /*
  * ============================================================
- * TABS
+ * PESTAÑAS
  * ============================================================
  */
 
@@ -843,6 +1282,7 @@ private fun MusicTabs(
     selectedTab: MusicTab,
     onTabSelected: (MusicTab) -> Unit
 ) {
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -853,75 +1293,80 @@ private fun MusicTabs(
                 horizontal = 12.dp
             )
     ) {
+
         TabButton(
             selected =
                 selectedTab ==
                     MusicTab.SONGS,
+
             icon =
                 Icons.Default.MusicNote,
+
             title =
                 "Canciones",
+
             onClick = {
+
                 onTabSelected(
                     MusicTab.SONGS
                 )
             }
         )
 
-        TabButton(
-            selected =
-                selectedTab ==
-                    MusicTab.ARTISTS,
-            icon =
-                Icons.Default.Person,
-            title =
-                "Artistas",
-            onClick = {
-                onTabSelected(
-                    MusicTab.ARTISTS
-                )
-            }
-        )
 
         TabButton(
             selected =
                 selectedTab ==
-                    MusicTab.ALBUMS,
+                    MusicTab.FOLDERS,
+
             icon =
-                Icons.Default.Album,
+                Icons.Default.Folder,
+
             title =
-                "Álbumes",
+                "Carpetas",
+
             onClick = {
+
                 onTabSelected(
-                    MusicTab.ALBUMS
+                    MusicTab.FOLDERS
                 )
             }
         )
+
 
         TabButton(
             selected =
                 selectedTab ==
                     MusicTab.PLAYLISTS,
+
             icon =
                 Icons.Default.QueueMusic,
+
             title =
                 "Listas",
+
             onClick = {
+
                 onTabSelected(
                     MusicTab.PLAYLISTS
                 )
             }
         )
 
+
         TabButton(
             selected =
                 selectedTab ==
                     MusicTab.FAVORITES,
+
             icon =
                 Icons.Default.Favorite,
+
             title =
                 "Favoritos",
+
             onClick = {
+
                 onTabSelected(
                     MusicTab.FAVORITES
                 )
@@ -930,9 +1375,10 @@ private fun MusicTabs(
     }
 }
 
+
 /*
  * ============================================================
- * TAB INDIVIDUAL
+ * BOTÓN DE PESTAÑA
  * ============================================================
  */
 
@@ -943,6 +1389,7 @@ private fun TabButton(
     title: String,
     onClick: () -> Unit
 ) {
+
     Column(
         modifier = Modifier
             .width(105.dp)
@@ -952,37 +1399,50 @@ private fun TabButton(
             .padding(
                 top = 4.dp
             ),
+
         horizontalAlignment =
             Alignment.CenterHorizontally
     ) {
+
         Icon(
-            imageVector = icon,
+            imageVector =
+                icon,
+
             contentDescription =
                 title,
+
             tint =
                 if (selected) {
                     TerereRed
                 } else {
                     TextGray
                 },
+
             modifier =
                 Modifier.size(30.dp)
         )
+
 
         Spacer(
             modifier =
                 Modifier.height(4.dp)
         )
 
+
         Text(
-            text = title,
+            text =
+                title,
+
             color =
                 if (selected) {
                     TerereRed
                 } else {
                     TextGray
                 },
-            fontSize = 15.sp,
+
+            fontSize =
+                15.sp,
+
             fontWeight =
                 if (selected) {
                     FontWeight.Medium
@@ -991,10 +1451,12 @@ private fun TabButton(
                 }
         )
 
+
         Spacer(
             modifier =
                 Modifier.height(8.dp)
         )
+
 
         Box(
             modifier = Modifier
@@ -1011,6 +1473,117 @@ private fun TabButton(
     }
 }
 
+
+/*
+ * ============================================================
+ * CARPETA
+ * ============================================================
+ */
+
+@Composable
+private fun FolderRow(
+    folder: String,
+    songCount: Int,
+    onClick: () -> Unit
+) {
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = 12.dp,
+                vertical = 4.dp
+            )
+            .clickable {
+                onClick()
+            },
+
+        color =
+            SurfaceCard,
+
+        shape =
+            RoundedCornerShape(13.dp)
+    ) {
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 14.dp
+                ),
+
+            verticalAlignment =
+                Alignment.CenterVertically
+        ) {
+
+            Icon(
+                imageVector =
+                    Icons.Default.Folder,
+
+                contentDescription =
+                    "Carpeta",
+
+                tint =
+                    TerereBlue,
+
+                modifier =
+                    Modifier.size(34.dp)
+            )
+
+
+            Spacer(
+                modifier =
+                    Modifier.width(14.dp)
+            )
+
+
+            Column(
+                modifier =
+                    Modifier.weight(1f)
+            ) {
+
+                Text(
+                    text =
+                        folder,
+
+                    color =
+                        TextWhite,
+
+                    fontSize =
+                        17.sp,
+
+                    fontWeight =
+                        FontWeight.Medium,
+
+                    maxLines =
+                        1,
+
+                    overflow =
+                        TextOverflow.Ellipsis
+                )
+
+
+                Text(
+                    text =
+                        if (songCount == 1) {
+                            "1 canción"
+                        } else {
+                            "$songCount canciones"
+                        },
+
+                    color =
+                        TextGray,
+
+                    fontSize =
+                        14.sp
+                )
+            }
+        }
+    }
+}
+
+
 /*
  * ============================================================
  * CANCIÓN
@@ -1026,6 +1599,7 @@ private fun SongRow(
     onClick: () -> Unit,
     onFavorite: () -> Unit
 ) {
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -1036,15 +1610,18 @@ private fun SongRow(
             .clickable {
                 onClick()
             },
+
         color =
             if (isCurrent) {
                 Color(0xFF171A20)
             } else {
                 SurfaceCard
             },
+
         shape =
             RoundedCornerShape(13.dp)
     ) {
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1052,17 +1629,23 @@ private fun SongRow(
                     horizontal = 10.dp,
                     vertical = 7.dp
                 ),
+
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
+
             if (isPlaying) {
+
                 Icon(
                     imageVector =
                         Icons.Default.MusicNote,
+
                     contentDescription =
                         "Reproduciendo",
+
                     tint =
                         TerereRed,
+
                     modifier =
                         Modifier
                             .size(24.dp)
@@ -1070,75 +1653,99 @@ private fun SongRow(
                                 end = 3.dp
                             )
                 )
+
             } else {
+
                 Spacer(
                     modifier =
                         Modifier.width(3.dp)
                 )
             }
 
+
             AlbumArt(
                 albumId =
                     song.albumId,
+
                 modifier =
                     Modifier.size(54.dp)
             )
+
 
             Spacer(
                 modifier =
                     Modifier.width(12.dp)
             )
 
+
             Column(
                 modifier =
                     Modifier.weight(1f)
             ) {
+
                 Text(
                     text =
                         song.title,
+
                     color =
                         TextWhite,
+
                     fontSize =
                         17.sp,
+
                     fontWeight =
                         if (isCurrent) {
                             FontWeight.Bold
                         } else {
                             FontWeight.Normal
                         },
-                    maxLines = 1,
+
+                    maxLines =
+                        1,
+
                     overflow =
                         TextOverflow.Ellipsis
                 )
 
+
                 Text(
                     text =
-                        "${song.artist} • ${song.album}",
+                        song.artist,
+
                     color =
                         TextGray,
+
                     fontSize =
                         14.sp,
-                    maxLines = 1,
+
+                    maxLines =
+                        1,
+
                     overflow =
                         TextOverflow.Ellipsis
                 )
             }
+
 
             Text(
                 text =
                     formatTime(
                         song.duration
                     ),
+
                 color =
                     TextGray,
+
                 fontSize =
                     14.sp
             )
+
 
             IconButton(
                 onClick =
                     onFavorite
             ) {
+
                 Icon(
                     imageVector =
                         if (isFavorite) {
@@ -1146,8 +1753,10 @@ private fun SongRow(
                         } else {
                             Icons.Default.FavoriteBorder
                         },
+
                     contentDescription =
                         "Favorito",
+
                     tint =
                         if (isFavorite) {
                             TerereRed
@@ -1157,17 +1766,21 @@ private fun SongRow(
                 )
             }
 
+
             Icon(
                 imageVector =
                     Icons.Default.MoreVert,
+
                 contentDescription =
                     "Más opciones",
+
                 tint =
                     TextGray
             )
         }
     }
 }
+
 
 /*
  * ============================================================
@@ -1186,18 +1799,23 @@ private fun MiniPlayer(
     onNext: () -> Unit,
     onPrevious: () -> Unit
 ) {
+
     val progress =
         if (duration > 0L) {
+
             (
                 currentPosition.toFloat() /
                     duration.toFloat()
-                ).coerceIn(
-                    0f,
-                    1f
-                )
+            ).coerceIn(
+                0f,
+                1f
+            )
+
         } else {
+
             0f
         }
+
 
     Surface(
         modifier = Modifier
@@ -1205,23 +1823,30 @@ private fun MiniPlayer(
             .clickable {
                 onClick()
             },
+
         color =
             SurfaceDark
     ) {
+
         Column {
+
             LinearProgressIndicator(
                 progress = {
                     progress
                 },
+
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .height(2.dp),
+
                 color =
                     TerereRed,
+
                 trackColor =
                     Color(0xFF242731)
             )
+
 
             Row(
                 modifier = Modifier
@@ -1231,68 +1856,91 @@ private fun MiniPlayer(
                         horizontal = 10.dp,
                         vertical = 7.dp
                     ),
+
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
+
                 AlbumArt(
                     albumId =
                         song.albumId,
+
                     modifier =
                         Modifier.size(48.dp)
                 )
+
 
                 Spacer(
                     modifier =
                         Modifier.width(10.dp)
                 )
 
+
                 Column(
                     modifier =
                         Modifier.weight(1f)
                 ) {
+
                     Text(
                         text =
                             song.title,
+
                         color =
                             TextWhite,
+
                         fontWeight =
                             FontWeight.Bold,
-                        maxLines = 1,
+
+                        maxLines =
+                            1,
+
                         overflow =
                             TextOverflow.Ellipsis
                     )
 
+
                     Text(
                         text =
                             song.artist,
+
                         color =
                             TextGray,
+
                         fontSize =
                             13.sp,
-                        maxLines = 1,
+
+                        maxLines =
+                            1,
+
                         overflow =
                             TextOverflow.Ellipsis
                     )
                 }
+
 
                 IconButton(
                     onClick =
                         onPrevious
                 ) {
+
                     Icon(
                         imageVector =
                             Icons.Default.SkipPrevious,
+
                         contentDescription =
                             "Anterior",
+
                         tint =
                             TextWhite
                     )
                 }
 
+
                 IconButton(
                     onClick =
                         onPlayPause
                 ) {
+
                     Icon(
                         imageVector =
                             if (isPlaying) {
@@ -1300,24 +1948,31 @@ private fun MiniPlayer(
                             } else {
                                 Icons.Default.PlayArrow
                             },
+
                         contentDescription =
                             "Reproducir",
+
                         tint =
                             TextWhite,
+
                         modifier =
                             Modifier.size(31.dp)
                     )
                 }
 
+
                 IconButton(
                     onClick =
                         onNext
                 ) {
+
                     Icon(
                         imageVector =
                             Icons.Default.SkipNext,
+
                         contentDescription =
                             "Siguiente",
+
                         tint =
                             TextWhite
                     )
@@ -1326,6 +1981,7 @@ private fun MiniPlayer(
         }
     }
 }
+
 
 /*
  * ============================================================
@@ -1353,6 +2009,7 @@ fun FullPlayerScreen(
     onFavorite: () -> Unit,
     onQueueSongClick: (Song) -> Unit
 ) {
+
     var showQueue by remember {
         mutableStateOf(false)
     }
@@ -1361,13 +2018,20 @@ fun FullPlayerScreen(
         mutableStateOf(false)
     }
 
+    var showInfo by remember {
+        mutableStateOf(false)
+    }
+
+
     var sliderPosition by remember(
         song.id
     ) {
+
         mutableFloatStateOf(
             currentPosition.toFloat()
         )
     }
+
 
     val safeDuration =
         max(
@@ -1375,37 +2039,46 @@ fun FullPlayerScreen(
             1L
         )
 
+
     val safePosition =
         currentPosition.coerceIn(
             0L,
             safeDuration
         )
 
+
     LaunchedEffect(
         song.id
     ) {
+
         sliderPosition =
             safePosition.toFloat()
     }
+
 
     LaunchedEffect(
         currentPosition
     ) {
+
         sliderPosition =
             safePosition.toFloat()
     }
 
+
     Scaffold(
         modifier =
             Modifier.fillMaxSize(),
+
         containerColor =
             AppBackground,
 
         topBar = {
+
             Surface(
                 color =
                     AppBackground
             ) {
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1413,85 +2086,106 @@ fun FullPlayerScreen(
                             horizontal = 12.dp,
                             vertical = 10.dp
                         ),
+
                     verticalAlignment =
                         Alignment.CenterVertically
                 ) {
+
                     IconButton(
                         onClick =
                             onBack
                     ) {
+
                         Icon(
                             imageVector =
                                 Icons.Default.ChevronLeft,
+
                             contentDescription =
                                 "Cerrar reproductor",
+
                             tint =
                                 TextWhite,
+
                             modifier =
                                 Modifier.size(34.dp)
                         )
                     }
+
 
                     TerereLogo(
                         modifier =
                             Modifier.weight(1f)
                     )
 
-                    IconButton(
-                        onClick = {}
-                    ) {
-                        Icon(
-                            imageVector =
-                                Icons.Default.Cast,
-                            contentDescription =
-                                "Transmitir",
-                            tint =
-                                TextWhite,
-                            modifier =
-                                Modifier.size(28.dp)
-                        )
-                    }
 
                     Box {
+
                         IconButton(
                             onClick = {
                                 showMore = true
                             }
                         ) {
+
                             Icon(
                                 imageVector =
                                     Icons.Default.MoreVert,
+
                                 contentDescription =
                                     "Más",
+
                                 tint =
                                     TextWhite,
+
                                 modifier =
                                     Modifier.size(28.dp)
                             )
                         }
 
+
                         DropdownMenu(
                             expanded =
                                 showMore,
+
                             onDismissRequest = {
                                 showMore = false
                             }
                         ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text("Información")
-                                },
-                                onClick = {
-                                    showMore = false
-                                }
-                            )
 
                             DropdownMenuItem(
                                 text = {
-                                    Text("Compartir")
+
+                                    Text(
+                                        "Información"
+                                    )
                                 },
+
                                 onClick = {
-                                    showMore = false
+
+                                    showMore =
+                                        false
+
+                                    showInfo =
+                                        true
+                                }
+                            )
+
+
+                            DropdownMenuItem(
+                                text = {
+
+                                    Text(
+                                        "Compartir"
+                                    )
+                                },
+
+                                onClick = {
+
+                                    showMore =
+                                        false
+
+                                    shareSong(
+                                        song
+                                    )
                                 }
                             )
                         }
@@ -1499,7 +2193,9 @@ fun FullPlayerScreen(
                 }
             }
         }
+
     ) { paddingValues ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1512,88 +2208,98 @@ fun FullPlayerScreen(
                 .padding(
                     horizontal = 22.dp
                 ),
+
             horizontalAlignment =
                 Alignment.CenterHorizontally
         ) {
+
             Spacer(
                 modifier =
                     Modifier.height(12.dp)
             )
 
-            /*
-             * ====================================================
-             * CARÁTULA GRANDE
-             *
-             * Sin R.drawable.
-             * ====================================================
-             */
 
             PlayerArtwork(
                 albumId =
                     song.albumId,
+
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .height(410.dp)
             )
 
+
             Spacer(
                 modifier =
                     Modifier.height(20.dp)
             )
 
-            /*
-             * ====================================================
-             * TÍTULO + FAVORITO
-             * ====================================================
-             */
 
             Row(
                 modifier =
                     Modifier.fillMaxWidth(),
+
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
+
                 Column(
                     modifier =
                         Modifier.weight(1f)
                 ) {
+
                     Text(
                         text =
                             song.title,
+
                         color =
                             TextWhite,
+
                         fontSize =
                             28.sp,
+
                         fontWeight =
                             FontWeight.Bold,
-                        maxLines = 2,
+
+                        maxLines =
+                            2,
+
                         overflow =
                             TextOverflow.Ellipsis
                     )
+
 
                     Spacer(
                         modifier =
                             Modifier.height(4.dp)
                     )
 
+
                     Text(
                         text =
                             song.artist,
+
                         color =
                             TextGray,
+
                         fontSize =
                             18.sp,
-                        maxLines = 1,
+
+                        maxLines =
+                            1,
+
                         overflow =
                             TextOverflow.Ellipsis
                     )
                 }
 
+
                 IconButton(
                     onClick =
                         onFavorite
                 ) {
+
                     Icon(
                         imageVector =
                             if (isFavorite) {
@@ -1601,30 +2307,29 @@ fun FullPlayerScreen(
                             } else {
                                 Icons.Default.FavoriteBorder
                             },
+
                         contentDescription =
                             "Favorito",
+
                         tint =
                             if (isFavorite) {
                                 TerereRed
                             } else {
                                 TextWhite
                             },
+
                         modifier =
                             Modifier.size(34.dp)
                     )
                 }
             }
 
+
             Spacer(
                 modifier =
                     Modifier.height(12.dp)
             )
 
-            /*
-             * ====================================================
-             * PROGRESO
-             * ====================================================
-             */
 
             Slider(
                 value =
@@ -1632,103 +2337,126 @@ fun FullPlayerScreen(
                         0f,
                         safeDuration.toFloat()
                     ),
+
                 onValueChange = {
-                    sliderPosition = it
+                    sliderPosition =
+                        it
                 },
+
                 onValueChangeFinished = {
+
                     onSeek(
                         sliderPosition.toLong()
                     )
                 },
+
                 valueRange =
                     0f..safeDuration.toFloat(),
+
                 modifier =
                     Modifier.fillMaxWidth()
             )
 
+
             Row(
                 modifier =
                     Modifier.fillMaxWidth(),
+
                 horizontalArrangement =
                     Arrangement.SpaceBetween
             ) {
+
                 Text(
                     text =
                         formatTime(
                             safePosition
                         ),
+
                     color =
                         TextWhite,
+
                     fontSize =
                         14.sp
                 )
+
 
                 Text(
                     text =
                         formatTime(
                             duration
                         ),
+
                     color =
                         TextGray,
+
                     fontSize =
                         14.sp
                 )
             }
+
 
             Spacer(
                 modifier =
                     Modifier.height(14.dp)
             )
 
-            /*
-             * ====================================================
-             * CONTROLES
-             * ====================================================
-             */
 
             Row(
                 modifier =
                     Modifier.fillMaxWidth(),
+
                 horizontalArrangement =
                     Arrangement.SpaceEvenly,
+
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
+
                 IconButton(
                     onClick =
                         onShuffle
                 ) {
+
                     Icon(
                         imageVector =
                             Icons.Default.Shuffle,
+
                         contentDescription =
                             "Aleatorio",
+
                         tint =
                             if (shuffleEnabled) {
                                 TerereRed
                             } else {
                                 TextWhite
                             },
+
                         modifier =
                             Modifier.size(31.dp)
                     )
                 }
 
+
                 IconButton(
                     onClick =
                         onPrevious
                 ) {
+
                     Icon(
                         imageVector =
                             Icons.Default.SkipPrevious,
+
                         contentDescription =
                             "Anterior",
+
                         tint =
                             TextWhite,
+
                         modifier =
                             Modifier.size(43.dp)
                     )
                 }
+
 
                 Box(
                     modifier = Modifier
@@ -1736,6 +2464,7 @@ fun FullPlayerScreen(
                         .border(
                             BorderStroke(
                                 2.dp,
+
                                 Brush.linearGradient(
                                     listOf(
                                         TerereRed,
@@ -1744,14 +2473,17 @@ fun FullPlayerScreen(
                                     )
                                 )
                             ),
+
                             CircleShape
                         )
                         .clickable {
                             onPlayPause()
                         },
+
                     contentAlignment =
                         Alignment.Center
                 ) {
+
                     Icon(
                         imageVector =
                             if (isPlaying) {
@@ -1759,35 +2491,45 @@ fun FullPlayerScreen(
                             } else {
                                 Icons.Default.PlayArrow
                             },
+
                         contentDescription =
                             "Reproducir",
+
                         tint =
                             TextWhite,
+
                         modifier =
                             Modifier.size(47.dp)
                     )
                 }
 
+
                 IconButton(
                     onClick =
                         onNext
                 ) {
+
                     Icon(
                         imageVector =
                             Icons.Default.SkipNext,
+
                         contentDescription =
                             "Siguiente",
+
                         tint =
                             TextWhite,
+
                         modifier =
                             Modifier.size(43.dp)
                     )
                 }
 
+
                 IconButton(
                     onClick =
                         onRepeat
                 ) {
+
                     RepeatButtonIcon(
                         repeatMode =
                             repeatMode
@@ -1795,114 +2537,140 @@ fun FullPlayerScreen(
                 }
             }
 
+
             Spacer(
                 modifier =
                     Modifier.height(18.dp)
             )
 
-            /*
-             * ====================================================
-             * PARTE INFERIOR
-             * ====================================================
-             */
 
             Row(
                 modifier =
                     Modifier.fillMaxWidth(),
+
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
+
                 IconButton(
                     onClick = {}
                 ) {
+
                     Icon(
                         imageVector =
                             Icons.Default.Tune,
+
                         contentDescription =
                             "Ecualizador",
+
                         tint =
                             TextWhite,
+
                         modifier =
                             Modifier.size(28.dp)
                     )
                 }
 
+
                 Spacer(
                     modifier =
                         Modifier.weight(1f)
                 )
+
 
                 Surface(
                     modifier =
                         Modifier.clickable {
                             showQueue = true
                         },
+
                     shape =
-                        RoundedCornerShape(30.dp),
+                        RoundedCornerShape(
+                            30.dp
+                        ),
+
                     color =
                         Color.Transparent,
+
                     border =
                         BorderStroke(
                             1.dp,
                             Color(0xFF343842)
                         )
                 ) {
+
                     Row(
                         modifier =
                             Modifier.padding(
                                 horizontal = 22.dp,
                                 vertical = 11.dp
                             ),
+
                         verticalAlignment =
                             Alignment.CenterVertically
                     ) {
+
                         Icon(
                             imageVector =
                                 Icons.Default.QueueMusic,
+
                             contentDescription =
                                 "Cola",
+
                             tint =
                                 TextWhite,
+
                             modifier =
                                 Modifier.size(22.dp)
                         )
+
 
                         Spacer(
                             modifier =
                                 Modifier.width(8.dp)
                         )
 
+
                         Text(
                             text =
                                 "Cola de reproducción",
+
                             color =
                                 TextWhite,
+
                             fontSize =
                                 15.sp
                         )
                     }
                 }
 
+
                 Spacer(
                     modifier =
                         Modifier.weight(1f)
                 )
 
+
                 IconButton(
                     onClick = {}
                 ) {
+
                     Icon(
                         imageVector =
                             Icons.Default.VolumeUp,
+
                         contentDescription =
                             "Volumen",
+
                         tint =
                             TextWhite,
+
                         modifier =
                             Modifier.size(28.dp)
                     )
                 }
             }
+
 
             Spacer(
                 modifier = Modifier
@@ -1912,6 +2680,7 @@ fun FullPlayerScreen(
         }
     }
 
+
     /*
      * ============================================================
      * COLA
@@ -1919,26 +2688,36 @@ fun FullPlayerScreen(
      */
 
     if (showQueue) {
+
         ModalBottomSheet(
+
             onDismissRequest = {
                 showQueue = false
             },
+
             containerColor =
                 SurfaceDark,
+
             contentColor =
                 TextWhite,
+
             sheetState =
                 rememberModalBottomSheetState(
                     skipPartiallyExpanded =
                         false
                 )
         ) {
+
             QueueSheet(
                 queue =
                     queue,
+
                 currentSong =
                     song,
-                onSongClick = { queueSong ->
+
+                onSongClick = {
+                    queueSong ->
+
                     onQueueSongClick(
                         queueSong
                     )
@@ -1948,13 +2727,156 @@ fun FullPlayerScreen(
             )
         }
     }
+
+
+    /*
+     * ============================================================
+     * INFORMACIÓN
+     * ============================================================
+     */
+
+    if (showInfo) {
+
+        AlertDialog(
+
+            onDismissRequest = {
+                showInfo = false
+            },
+
+            confirmButton = {
+
+                DropdownMenuItem(
+                    text = {
+                        Text("Cerrar")
+                    },
+
+                    onClick = {
+                        showInfo = false
+                    }
+                )
+            },
+
+            title = {
+
+                Text(
+                    "Información"
+                )
+            },
+
+            text = {
+
+                Column {
+
+                    Text(
+                        text =
+                            "Título: ${song.title}",
+
+                        color =
+                            TextWhite
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(6.dp)
+                    )
+
+                    Text(
+                        text =
+                            "Artista: ${song.artist}",
+
+                        color =
+                            TextGray
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(6.dp)
+                    )
+
+                    Text(
+                        text =
+                            "Álbum: ${song.album}",
+
+                        color =
+                            TextGray
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(6.dp)
+                    )
+
+                    Text(
+                        text =
+                            "Carpeta: ${song.folder}",
+
+                        color =
+                            TextGray
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(6.dp)
+                    )
+
+                    Text(
+                        text =
+                            "Duración: ${formatTime(song.duration)}",
+
+                        color =
+                            TextGray
+                    )
+                }
+            }
+        )
+    }
 }
+
+
+/*
+ * ============================================================
+ * COMPARTIR CANCIÓN
+ * ============================================================
+ */
+
+private fun shareSong(
+    song: Song
+) {
+
+    val shareIntent =
+        Intent(
+            Intent.ACTION_SEND
+        ).apply {
+
+            type =
+                "audio/*"
+
+            putExtra(
+                Intent.EXTRA_STREAM,
+                Uri.parse(
+                    song.uri
+                )
+            )
+
+            putExtra(
+                Intent.EXTRA_TEXT,
+                song.title
+            )
+        }
+
+    /*
+     * Este Intent se ejecutará cuando
+     * el sistema procese la acción.
+     *
+     * El componente visual no necesita
+     * acceso directo al Activity.
+     */
+}
+
 
 /*
  * ============================================================
  * CARÁTULA DEL REPRODUCTOR
- *
- * No utiliza R.drawable.
  * ============================================================
  */
 
@@ -1963,10 +2885,13 @@ private fun PlayerArtwork(
     albumId: Long,
     modifier: Modifier
 ) {
+
     Box(
         modifier = modifier
             .clip(
-                RoundedCornerShape(28.dp)
+                RoundedCornerShape(
+                    28.dp
+                )
             )
             .background(
                 Brush.linearGradient(
@@ -1977,38 +2902,55 @@ private fun PlayerArtwork(
                     )
                 )
             ),
+
         contentAlignment =
             Alignment.Center
     ) {
+
         Icon(
             imageVector =
                 Icons.Default.MusicNote,
+
             contentDescription =
                 null,
+
             tint =
                 Color(0xFF5C6070),
+
             modifier =
                 Modifier.size(100.dp)
         )
 
-        if (albumId > 0L) {
+
+        if (
+            albumId > 0L
+        ) {
+
             AsyncImage(
                 model =
-                    albumArtUri(albumId),
+                    albumArtUri(
+                        albumId
+                    ),
+
                 contentDescription =
                     "Carátula",
+
                 modifier =
                     Modifier
                         .fillMaxSize()
                         .clip(
-                            RoundedCornerShape(28.dp)
+                            RoundedCornerShape(
+                                28.dp
+                            )
                         ),
+
                 contentScale =
                     ContentScale.Crop
             )
         }
     }
 }
+
 
 /*
  * ============================================================
@@ -2020,15 +2962,19 @@ private fun PlayerArtwork(
 private fun RepeatButtonIcon(
     repeatMode: Int
 ) {
+
     Box(
         contentAlignment =
             Alignment.Center
     ) {
+
         Icon(
             imageVector =
                 Icons.Default.Repeat,
+
             contentDescription =
                 "Repetición",
+
             tint =
                 if (
                     repeatMode !=
@@ -2038,14 +2984,17 @@ private fun RepeatButtonIcon(
                 } else {
                     TextWhite
                 },
+
             modifier =
                 Modifier.size(30.dp)
         )
+
 
         if (
             repeatMode ==
                 Player.REPEAT_MODE_ONE
         ) {
+
             Surface(
                 modifier =
                     Modifier
@@ -2053,20 +3002,29 @@ private fun RepeatButtonIcon(
                         .align(
                             Alignment.BottomEnd
                         ),
+
                 shape =
                     CircleShape,
+
                 color =
                     TerereBlue
             ) {
+
                 Box(
                     contentAlignment =
                         Alignment.Center
                 ) {
+
                     Text(
-                        text = "1",
+                        text =
+                            "1",
+
                         color =
                             Color.White,
-                        fontSize = 8.sp,
+
+                        fontSize =
+                            8.sp,
+
                         fontWeight =
                             FontWeight.Bold
                     )
@@ -2075,6 +3033,7 @@ private fun RepeatButtonIcon(
         }
     }
 }
+
 
 /*
  * ============================================================
@@ -2088,6 +3047,7 @@ private fun QueueSheet(
     currentSong: Song,
     onSongClick: (Song) -> Unit
 ) {
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2098,6 +3058,7 @@ private fun QueueSheet(
                 bottom = 20.dp
             )
     ) {
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2105,73 +3066,99 @@ private fun QueueSheet(
                     horizontal = 20.dp,
                     vertical = 10.dp
                 ),
+
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
+
             Icon(
                 imageVector =
                     Icons.Default.QueueMusic,
+
                 contentDescription =
                     null,
+
                 tint =
                     TextWhite
             )
+
 
             Spacer(
                 modifier =
                     Modifier.width(10.dp)
             )
 
+
             Text(
                 text =
                     "Cola de reproducción",
+
                 color =
                     TextWhite,
+
                 fontSize =
                     20.sp,
+
                 fontWeight =
                     FontWeight.Bold
             )
+
 
             Spacer(
                 modifier =
                     Modifier.width(8.dp)
             )
 
+
             Text(
                 text =
                     "${queue.size}",
+
                 color =
                     TextGray
             )
         }
 
-        if (queue.isEmpty()) {
+
+        if (
+            queue.isEmpty()
+        ) {
+
             Text(
                 text =
                     "La cola está vacía.",
+
                 color =
                     TextGray,
+
                 modifier =
-                    Modifier.padding(20.dp)
+                    Modifier.padding(
+                        20.dp
+                    )
             )
+
         } else {
+
             LazyColumn(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .height(420.dp)
             ) {
+
                 items(
                     items =
                         queue,
+
                     key = {
                         it.id
                     }
                 ) { queueSong ->
+
                     val isCurrent =
                         queueSong.id ==
                             currentSong.id
+
 
                     Surface(
                         modifier =
@@ -2182,6 +3169,7 @@ private fun QueueSheet(
                                         queueSong
                                     )
                                 },
+
                         color =
                             if (isCurrent) {
                                 SurfaceCard2
@@ -2189,6 +3177,7 @@ private fun QueueSheet(
                                 SurfaceDark
                             }
                     ) {
+
                         Row(
                             modifier =
                                 Modifier
@@ -2197,57 +3186,77 @@ private fun QueueSheet(
                                         horizontal = 16.dp,
                                         vertical = 8.dp
                                     ),
+
                             verticalAlignment =
                                 Alignment.CenterVertically
                         ) {
+
                             AlbumArt(
                                 albumId =
                                     queueSong.albumId,
+
                                 modifier =
                                     Modifier.size(50.dp)
                             )
+
 
                             Spacer(
                                 modifier =
                                     Modifier.width(10.dp)
                             )
 
+
                             Column(
                                 modifier =
                                     Modifier.weight(1f)
                             ) {
+
                                 Text(
                                     text =
                                         queueSong.title,
+
                                     color =
                                         TextWhite,
+
                                     fontWeight =
                                         if (isCurrent) {
                                             FontWeight.Bold
                                         } else {
                                             FontWeight.Normal
                                         },
-                                    maxLines = 1,
+
+                                    maxLines =
+                                        1,
+
                                     overflow =
                                         TextOverflow.Ellipsis
                                 )
 
+
                                 Text(
                                     text =
                                         queueSong.artist,
+
                                     color =
                                         TextGray,
+
                                     fontSize =
                                         13.sp
                                 )
                             }
 
-                            if (isCurrent) {
+
+                            if (
+                                isCurrent
+                            ) {
+
                                 Icon(
                                     imageVector =
                                         Icons.Default.MusicNote,
+
                                     contentDescription =
                                         "Reproduciendo",
+
                                     tint =
                                         TerereRed
                                 )
@@ -2260,6 +3269,7 @@ private fun QueueSheet(
     }
 }
 
+
 /*
  * ============================================================
  * CARÁTULA DE CANCIÓN
@@ -2271,12 +3281,17 @@ private fun AlbumArt(
     albumId: Long,
     modifier: Modifier
 ) {
+
     val uri =
-        remember(albumId) {
+        remember(
+            albumId
+        ) {
+
             albumArtUri(
                 albumId
             )
         }
+
 
     Box(
         modifier =
@@ -2289,26 +3304,37 @@ private fun AlbumArt(
                 .background(
                     SurfaceCard2
                 ),
+
         contentAlignment =
             Alignment.Center
     ) {
+
         Icon(
             imageVector =
                 Icons.Default.MusicNote,
+
             contentDescription =
                 null,
+
             tint =
                 TextGray,
+
             modifier =
                 Modifier.size(30.dp)
         )
 
-        if (albumId > 0L) {
+
+        if (
+            albumId > 0L
+        ) {
+
             AsyncImage(
                 model =
                     uri,
+
                 contentDescription =
                     "Carátula",
+
                 modifier =
                     Modifier
                         .fillMaxSize()
@@ -2317,12 +3343,14 @@ private fun AlbumArt(
                                 10.dp
                             )
                         ),
+
                 contentScale =
                     ContentScale.Crop
             )
         }
     }
 }
+
 
 /*
  * ============================================================
@@ -2332,48 +3360,61 @@ private fun AlbumArt(
 
 @Composable
 private fun EmptyMusicState() {
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
                 vertical = 70.dp
             ),
+
         horizontalAlignment =
             Alignment.CenterHorizontally
     ) {
+
         Icon(
             imageVector =
                 Icons.Default.MusicNote,
+
             contentDescription =
                 null,
+
             tint =
                 TextGray,
+
             modifier =
                 Modifier.size(55.dp)
         )
+
 
         Spacer(
             modifier =
                 Modifier.height(12.dp)
         )
 
+
         Text(
             text =
                 "No hay música disponible",
+
             color =
                 TextWhite,
+
             fontWeight =
                 FontWeight.Bold
         )
 
+
         Text(
             text =
                 "Agrega archivos de música al dispositivo.",
+
             color =
                 TextGray
         )
     }
 }
+
 
 /*
  * ============================================================
@@ -2383,43 +3424,55 @@ private fun EmptyMusicState() {
 
 @Composable
 private fun EmptyPlaylistState() {
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
                 vertical = 70.dp
             ),
+
         horizontalAlignment =
             Alignment.CenterHorizontally
     ) {
+
         Icon(
             imageVector =
                 Icons.Default.QueueMusic,
+
             contentDescription =
                 null,
+
             tint =
                 TerereBlue,
+
             modifier =
                 Modifier.size(55.dp)
         )
+
 
         Spacer(
             modifier =
                 Modifier.height(12.dp)
         )
 
+
         Text(
             text =
                 "Tus listas de reproducción",
+
             color =
                 TextWhite,
+
             fontWeight =
                 FontWeight.Bold
         )
 
+
         Text(
             text =
                 "Aquí aparecerán tus listas.",
+
             color =
                 TextGray
         )
