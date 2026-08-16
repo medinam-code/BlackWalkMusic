@@ -2,6 +2,8 @@ package com.blackwalkmusic
 
 import android.content.ContentResolver
 import android.provider.MediaStore
+import android.provider.MediaStore.Audio.Media
+import java.io.File
 
 data class Song(
     val id: Long,
@@ -11,35 +13,49 @@ data class Song(
     val duration: Long,
     val uri: String,
     val albumId: Long,
-    val dateAdded: Long
+    val dateAdded: Long,
+
+    // Carpeta donde está almacenada la canción
+    val folderPath: String = "",
+    val folderName: String = ""
 )
 
 object MusicRepository {
 
+    /**
+     * Obtiene todas las canciones disponibles
+     * en el almacenamiento del dispositivo.
+     *
+     * Se utiliza MediaStore para mantener compatibilidad
+     * con las diferentes versiones de Android.
+     */
     fun getSongs(
         contentResolver: ContentResolver
     ): List<Song> {
 
-        val songs = mutableListOf<Song>()
+        val songs =
+            mutableListOf<Song>()
 
         val collection =
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+            Media.EXTERNAL_CONTENT_URI
 
-        val projection = arrayOf(
-            MediaStore.Audio.Media._ID,
-            MediaStore.Audio.Media.TITLE,
-            MediaStore.Audio.Media.ARTIST,
-            MediaStore.Audio.Media.ALBUM,
-            MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.ALBUM_ID,
-            MediaStore.Audio.Media.DATE_ADDED
-        )
+        val projection =
+            arrayOf(
+                Media._ID,
+                Media.TITLE,
+                Media.ARTIST,
+                Media.ALBUM,
+                Media.DURATION,
+                Media.ALBUM_ID,
+                Media.DATE_ADDED,
+                Media.DATA
+            )
 
         val selection =
-            "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+            "${Media.IS_MUSIC} != 0"
 
         val sortOrder =
-            "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
+            "${Media.TITLE} COLLATE NOCASE ASC"
 
         contentResolver.query(
             collection,
@@ -50,86 +66,285 @@ object MusicRepository {
         )?.use { cursor ->
 
             val idColumn =
-                cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media._ID
+                cursor.getColumnIndex(
+                    Media._ID
                 )
 
             val titleColumn =
-                cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media.TITLE
+                cursor.getColumnIndex(
+                    Media.TITLE
                 )
 
             val artistColumn =
-                cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media.ARTIST
+                cursor.getColumnIndex(
+                    Media.ARTIST
                 )
 
             val albumColumn =
-                cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media.ALBUM
+                cursor.getColumnIndex(
+                    Media.ALBUM
                 )
 
             val durationColumn =
-                cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media.DURATION
+                cursor.getColumnIndex(
+                    Media.DURATION
                 )
 
             val albumIdColumn =
-                cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media.ALBUM_ID
+                cursor.getColumnIndex(
+                    Media.ALBUM_ID
                 )
 
             val dateAddedColumn =
-                cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media.DATE_ADDED
+                cursor.getColumnIndex(
+                    Media.DATE_ADDED
                 )
 
-            while (cursor.moveToNext()) {
+            val dataColumn =
+                cursor.getColumnIndex(
+                    Media.DATA
+                )
+
+            while (
+                cursor.moveToNext()
+            ) {
 
                 val id =
-                    cursor.getLong(idColumn)
+                    if (idColumn >= 0) {
+                        cursor.getLong(
+                            idColumn
+                        )
+                    } else {
+                        continue
+                    }
+
+                val title =
+                    if (titleColumn >= 0) {
+                        cursor.getString(
+                            titleColumn
+                        )
+                    } else {
+                        null
+                    }
+
+                val artist =
+                    if (artistColumn >= 0) {
+                        cursor.getString(
+                            artistColumn
+                        )
+                    } else {
+                        null
+                    }
+
+                val album =
+                    if (albumColumn >= 0) {
+                        cursor.getString(
+                            albumColumn
+                        )
+                    } else {
+                        null
+                    }
+
+                val duration =
+                    if (durationColumn >= 0) {
+                        cursor.getLong(
+                            durationColumn
+                        )
+                    } else {
+                        0L
+                    }
+
+                val albumId =
+                    if (albumIdColumn >= 0) {
+                        cursor.getLong(
+                            albumIdColumn
+                        )
+                    } else {
+                        0L
+                    }
+
+                val dateAdded =
+                    if (dateAddedColumn >= 0) {
+                        cursor.getLong(
+                            dateAddedColumn
+                        )
+                    } else {
+                        0L
+                    }
+
+                val filePath =
+                    if (dataColumn >= 0) {
+                        cursor.getString(
+                            dataColumn
+                        ) ?: ""
+                    } else {
+                        ""
+                    }
+
+                val folderPath =
+                    getFolderPath(
+                        filePath
+                    )
+
+                val folderName =
+                    getFolderName(
+                        folderPath
+                    )
+
+                val uri =
+                    "${Media.EXTERNAL_CONTENT_URI}/$id"
 
                 songs.add(
                     Song(
-                        id = id,
+
+                        id =
+                            id,
 
                         title =
-                            cursor.getString(
-                                titleColumn
-                            ) ?: "Sin título",
+                            title
+                                ?.takeIf {
+                                    it.isNotBlank()
+                                }
+                                ?: "Sin título",
 
                         artist =
-                            cursor.getString(
-                                artistColumn
-                            ) ?: "Artista desconocido",
+                            artist
+                                ?.takeIf {
+                                    it.isNotBlank()
+                                }
+                                ?: "Artista desconocido",
 
                         album =
-                            cursor.getString(
-                                albumColumn
-                            ) ?: "Álbum desconocido",
+                            album
+                                ?.takeIf {
+                                    it.isNotBlank()
+                                }
+                                ?: "Álbum desconocido",
 
                         duration =
-                            cursor.getLong(
-                                durationColumn
+                            duration.coerceAtLeast(
+                                0L
                             ),
 
                         uri =
-                            "${MediaStore.Audio.Media.EXTERNAL_CONTENT_URI}/$id",
+                            uri,
 
                         albumId =
-                            cursor.getLong(
-                                albumIdColumn
-                            ),
+                            albumId,
 
                         dateAdded =
-                            cursor.getLong(
-                                dateAddedColumn
-                            )
+                            dateAdded,
+
+                        folderPath =
+                            folderPath,
+
+                        folderName =
+                            folderName
                     )
                 )
             }
         }
 
         return songs
+    }
+
+    /**
+     * Obtiene la ruta de la carpeta.
+     */
+    private fun getFolderPath(
+        filePath: String
+    ): String {
+
+        if (
+            filePath.isBlank()
+        ) {
+            return ""
+        }
+
+        return try {
+
+            File(
+                filePath
+            )
+                .parent
+                ?: ""
+
+        } catch (
+            _: Exception
+        ) {
+
+            ""
+        }
+    }
+
+    /**
+     * Obtiene solamente el nombre de la carpeta.
+     */
+    private fun getFolderName(
+        folderPath: String
+    ): String {
+
+        if (
+            folderPath.isBlank()
+        ) {
+            return "Desconocida"
+        }
+
+        return try {
+
+            File(
+                folderPath
+            )
+                .name
+                .takeIf {
+                    it.isNotBlank()
+                }
+                ?: "Almacenamiento"
+
+        } catch (
+            _: Exception
+        ) {
+
+            "Desconocida"
+        }
+    }
+
+    /**
+     * Devuelve las carpetas existentes,
+     * sin repetirlas.
+     */
+    fun getFolders(
+        songs: List<Song>
+    ): List<String> {
+
+        return songs
+            .map {
+                it.folderPath
+            }
+            .filter {
+                it.isNotBlank()
+            }
+            .distinct()
+            .sortedBy {
+                it.lowercase()
+            }
+    }
+
+    /**
+     * Obtiene las canciones pertenecientes
+     * a una determinada carpeta.
+     */
+    fun getSongsFromFolder(
+        songs: List<Song>,
+        folderPath: String
+    ): List<Song> {
+
+        return songs
+            .filter {
+                it.folderPath == folderPath
+            }
+            .sortedBy {
+                it.title.lowercase()
+            }
     }
 }
